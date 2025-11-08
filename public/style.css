@@ -132,6 +132,7 @@ input[type="text"], input[type="number"] {
     background: rgba(0, 0, 0, 0.5);
     padding: 0 30px;
     border-radius: 15px;
+    gap: 20px;
 }
 
 .room-info {
@@ -139,6 +140,39 @@ input[type="text"], input[type="number"] {
     gap: 20px;
     align-items: center;
     font-size: 1.2em;
+}
+
+.bot-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.bot-select {
+    padding: 10px 15px;
+    border-radius: 8px;
+    border: none;
+    background: rgba(255, 255, 255, 0.9);
+    color: #333;
+    font-size: 0.9em;
+    cursor: pointer;
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 0.9em;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
 .phase-badge {

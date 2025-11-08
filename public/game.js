@@ -17,6 +17,9 @@ const betSlider = document.getElementById('betSlider');
 const betInput = document.getElementById('betInput');
 const chatInput = document.getElementById('chatInput');
 const sendChatBtn = document.getElementById('sendChatBtn');
+const addBotBtn = document.getElementById('addBotBtn');
+const removeBotBtn = document.getElementById('removeBotBtn');
+const botDifficulty = document.getElementById('botDifficulty');
 
 // Avatar Selection
 document.querySelectorAll('.avatar-option').forEach(option => {
@@ -46,6 +49,16 @@ joinBtn.addEventListener('click', () => {
 // Start Game
 startGameBtn.addEventListener('click', () => {
     socket.emit('startGame');
+});
+
+// Bot Controls
+addBotBtn.addEventListener('click', () => {
+    const difficulty = botDifficulty.value;
+    socket.emit('addBot', { difficulty });
+});
+
+removeBotBtn.addEventListener('click', () => {
+    socket.emit('removeBot');
 });
 
 // Bet Controls

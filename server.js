@@ -3,9 +3,11 @@ const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const PokerGame = require('./poker-game');
+const BotAI = require('./bot-ai');
 
 const PORT = 3000;
 const games = {};
+const botPlayers = {}; // Store bot AI instances
 
 app.use(express.static('public'));
 
@@ -117,6 +119,62 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('addBot', ({ difficulty }) => {
+    const roomId = socket.roomId;
+    const game = games[roomId];
+
+    if (game) {
+      const botId = `bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const botNames = ['PokerBot', 'ChipMaster', 'BluffKing', 'AceHunter', 'RiverRat', 'FlopStar', 'AllInAmy', 'CheckMate'];
+      const botAvatars = ['🤖', '👾', '🎰', '🎲', '🃏', '🎯', '💎', '⚡'];
+
+      const botName = botNames[Math.floor(Math.random() * botNames.length)];
+      const botAvatar = botAvatars[Math.floor(Math.random() * botAvatars.length)];
+
+      const result = game.addPlayer(botId, botName, botAvatar);
+
+      if (result.success) {
+        // Store bot AI instance
+        botPlayers[botId] = {
+          ai: new BotAI(difficulty || 'medium'),
+          roomId: roomId,
+          name: botName
+        };
+
+        io.to(roomId).emit('playerJoined', {
+          player: result.player,
+          message: `🤖 ${botName} (Bot) joined the game!`
+        });
+
+        broadcastGameState(roomId);
+      } else {
+        socket.emit('error', { message: result.message });
+      }
+    }
+  });
+
+  socket.on('removeBot', () => {
+    const roomId = socket.roomId;
+    const game = games[roomId];
+
+    if (game) {
+      // Find first bot and remove it
+      const botPlayer = game.players.find(p => p.id.startsWith('bot_'));
+      if (botPlayer) {
+        delete botPlayers[botPlayer.id];
+        game.removePlayer(botPlayer.id);
+
+        io.to(roomId).emit('playerLeft', {
+          playerId: botPlayer.id,
+          playerName: botPlayer.name,
+          message: `🤖 ${botPlayer.name} (Bot) left the game`
+        });
+
+        broadcastGameState(roomId);
+      }
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
     const roomId = socket.roomId;
@@ -149,6 +207,9 @@ io.on('connection', (socket) => {
           playerSocket.emit('updateGame', getFilteredGameState(game, player.id));
         }
       });
+
+      // Trigger bot turn if current player is a bot
+      processBotTurn(roomId);
     }
   }
 
@@ -166,6 +227,70 @@ io.on('connection', (socket) => {
     }
 
     return state;
+  }
+
+  function processBotTurn(roomId) {
+    const game = games[roomId];
+    if (!game || game.gameState === 'waiting' || game.gameState === 'showdown') {
+      return;
+    }
+
+    const currentPlayer = game.players[game.currentPlayerIndex];
+    if (!currentPlayer || !currentPlayer.id.startsWith('bot_')) {
+      return; // Not a bot's turn
+    }
+
+    const botData = botPlayers[currentPlayer.id];
+    if (!botData) {
+      return;
+    }
+
+    // Get thinking time
+    const thinkingTime = botData.ai.getThinkingTime();
+
+    setTimeout(() => {
+      // Make sure game state hasn't changed
+      const updatedGame = games[roomId];
+      if (!updatedGame || updatedGame.gameState === 'showdown') {
+        return;
+      }
+
+      const stillCurrentPlayer = updatedGame.players[updatedGame.currentPlayerIndex];
+      if (!stillCurrentPlayer || stillCurrentPlayer.id !== currentPlayer.id) {
+        return; // Turn changed
+      }
+
+      // Get bot decision
+      const gameState = updatedGame.getGameState();
+      const decision = botData.ai.makeDecision(currentPlayer, gameState);
+
+      // Execute bot action
+      const result = updatedGame.playerAction(currentPlayer.id, decision.action, decision.amount || 0);
+
+      if (result.success) {
+        io.to(roomId).emit('actionTaken', {
+          playerId: currentPlayer.id,
+          playerName: currentPlayer.name,
+          action: decision.action,
+          amount: decision.amount || 0
+        });
+
+        broadcastGameState(roomId);
+
+        if (updatedGame.gameState === 'showdown') {
+          const winners = updatedGame.determineWinner();
+          io.to(roomId).emit('showdown', winners);
+
+          setTimeout(() => {
+            updatedGame.dealerIndex = (updatedGame.dealerIndex + 1) % updatedGame.players.length;
+            const newRound = updatedGame.startGame();
+            if (newRound.success) {
+              broadcastGameState(roomId);
+            }
+          }, 5000);
+        }
+      }
+    }, thinkingTime);
   }
 });
 
