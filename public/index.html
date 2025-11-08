@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🃏 Texas Hold'em Poker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="screen">
+        <div class="login-container">
+            <h1>🃏 Texas Hold'em Poker</h1>
+            <p class="subtitle">Play with friends on localhost!</p>
+
+            <div class="avatar-selection">
+                <h3>Choose Your Avatar</h3>
+                <div class="avatar-grid">
+                    <div class="avatar-option" data-avatar="🤠">🤠</div>
+                    <div class="avatar-option" data-avatar="😎">😎</div>
+                    <div class="avatar-option" data-avatar="🤖">🤖</div>
+                    <div class="avatar-option" data-avatar="👑">👑</div>
+                    <div class="avatar-option" data-avatar="🦊">🦊</div>
+                    <div class="avatar-option" data-avatar="🐼">🐼</div>
+                    <div class="avatar-option" data-avatar="🦁">🦁</div>
+                    <div class="avatar-option" data-avatar="🐯">🐯</div>
+                    <div class="avatar-option" data-avatar="🎃">🎃</div>
+                    <div class="avatar-option" data-avatar="👻">👻</div>
+                    <div class="avatar-option" data-avatar="🎭">🎭</div>
+                    <div class="avatar-option" data-avatar="🎪">🎪</div>
+                </div>
+            </div>
+
+            <input type="text" id="playerName" placeholder="Enter your name" maxlength="15">
+            <input type="text" id="roomId" placeholder="Room ID (e.g., room1)" value="room1">
+            <button id="joinBtn" class="btn-primary">Join Game</button>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="gameScreen" class="screen hidden">
+        <div class="game-container">
+            <!-- Header -->
+            <div class="game-header">
+                <div class="room-info">
+                    <span id="roomName"></span>
+                    <span id="gamePhase" class="phase-badge">Waiting...</span>
+                </div>
+                <button id="startGameBtn" class="btn-primary hidden">Start Game</button>
+            </div>
+
+            <!-- Main Game Area -->
+            <div class="game-area">
+                <!-- Players Area -->
+                <div class="players-container" id="playersContainer">
+                    <!-- Players will be dynamically added here -->
+                </div>
+
+                <!-- Poker Table -->
+                <div class="poker-table">
+                    <div class="table-center">
+                        <div class="community-cards" id="communityCards">
+                            <!-- Community cards will appear here -->
+                        </div>
+                        <div class="pot-display">
+                            <div class="pot-label">POT</div>
+                            <div class="pot-amount" id="potAmount">$0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-panel" id="actionPanel">
+                    <div class="bet-controls">
+                        <input type="range" id="betSlider" min="0" max="1000" value="0" step="10">
+                        <input type="number" id="betInput" value="0" min="0" step="10">
+                    </div>
+                    <div class="action-buttons">
+                        <button class="action-btn btn-danger" data-action="fold">Fold</button>
+                        <button class="action-btn btn-warning" data-action="check">Check</button>
+                        <button class="action-btn btn-success" data-action="call">Call <span id="callAmount"></span></button>
+                        <button class="action-btn btn-primary" data-action="raise">Raise</button>
+                        <button class="action-btn btn-special" data-action="allin">All In</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Sidebar -->
+            <div class="chat-sidebar">
+                <div class="chat-header">
+                    <h3>💬 Chat</h3>
+                </div>
+                <div class="chat-messages" id="chatMessages">
+                    <!-- Chat messages will appear here -->
+                </div>
+                <div class="emoji-panel">
+                    <button class="emoji-btn" data-emoji="😂">😂</button>
+                    <button class="emoji-btn" data-emoji="👍">👍</button>
+                    <button class="emoji-btn" data-emoji="🎉">🎉</button>
+                    <button class="emoji-btn" data-emoji="😱">😱</button>
+                    <button class="emoji-btn" data-emoji="🔥">🔥</button>
+                    <button class="emoji-btn" data-emoji="💰">💰</button>
+                </div>
+                <div class="chat-input">
+                    <input type="text" id="chatInput" placeholder="Type a message..." maxlength="100">
+                    <button id="sendChatBtn">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Winner Modal -->
+    <div id="winnerModal" class="modal hidden">
+        <div class="modal-content">
+            <h2>🎉 Winner! 🎉</h2>
+            <div id="winnerInfo"></div>
+            <p>Next round starting soon...</p>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
