@@ -6,6 +6,8 @@ A fun and interactive multiplayer Texas Hold'em poker game with live chat, avata
 
 - **Full Texas Hold'em Rules**: Complete implementation of traditional poker rules
 - **Multiplayer Support**: Up to 8 players can join a game
+- **AI Bot Players**: Add intelligent bots with 3 difficulty levels (Easy, Medium, Hard)
+- **Solo Play**: Practice against bots when friends aren't available
 - **Live Chat**: Real-time chat with your friends while playing
 - **Fun Avatars**: Choose from 12 different avatar emojis
 - **Emoji Reactions**: Send emoji reactions that animate on screen
@@ -104,6 +106,50 @@ This game follows standard Texas Hold'em rules:
 10. Final betting round
 11. Showdown: Best hand wins!
 12. Next hand begins automatically
+
+## 🤖 Playing with Bots
+
+### Adding Bot Players
+
+The game features intelligent AI bot players that you can add to fill seats or practice your skills!
+
+**How to Add Bots:**
+1. After joining a room, look for the bot controls in the game header
+2. Select difficulty level from dropdown:
+   - **Easy**: More random decisions, easier to beat
+   - **Medium**: Balanced play with some strategy
+   - **Hard**: Smart decisions based on hand strength and pot odds
+3. Click "Add Bot" to add a bot player
+4. Bots will automatically play their turns with realistic thinking delays (1-3 seconds)
+
+**How to Remove Bots:**
+- Click "Remove Bot" to remove the most recently added bot
+
+### Bot Features
+
+- **Intelligent Decision Making**: Bots evaluate hand strength, calculate pot odds, and consider position
+- **Personality Traits**: Each bot has a unique personality (tight, loose, aggressive, passive, balanced)
+- **Bluffing**: Bots can bluff based on their personality and difficulty level
+- **Realistic Timing**: Bots "think" for 1-3 seconds before making decisions
+- **8 Unique Names**: PokerBot, ChipMaster, BluffKing, AceHunter, RiverRat, FlopStar, AllInAmy, CheckMate
+- **Cool Avatars**: 🤖 👾 🎰 🎲 🃏 🎯 💎 ⚡
+
+### Bot Strategy
+
+Bots make decisions based on:
+- **Pre-flop**: Evaluates pocket cards (pairs, high cards, suited, connected)
+- **Post-flop**: Analyzes pairs, two pairs, three of a kind, flush draws, straight draws
+- **Pot Odds**: Calculates if calling is profitable
+- **Position**: Plays more aggressively from later positions
+- **Aggression Level**: Based on personality and difficulty
+
+### Best Uses for Bots
+
+- **Solo Practice**: Play alone to practice strategies
+- **Fill Empty Seats**: Need 2+ players to start - add a bot!
+- **Test Hands**: See how different situations play out
+- **Learn the Game**: Practice without the pressure of real opponents
+- **Mixed Games**: Combine human players and bots for varied gameplay
 
 ## 🎨 Avatar Options
 
