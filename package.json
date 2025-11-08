@@ -1,0 +1,20 @@
+{
+  "name": "multiplayer-texas-holdem",
+  "version": "1.0.0",
+  "description": "Fun multiplayer Texas Hold'em poker game with live chat and avatars",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": ["poker", "texas-holdem", "multiplayer", "game"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
