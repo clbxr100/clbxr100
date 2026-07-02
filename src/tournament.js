@@ -27,6 +27,14 @@ class Tournament {
     this.startingChips = TOURNAMENT.startingChips;
   }
 
+  // Eliminated humans are no longer at the table, so table broadcasts
+  // miss them — always notify entrants directly.
+  notifyHumans(event, data) {
+    for (const e of this.entrants) {
+      if (!e.isBot) this.io.toUser(e.userId, event, data);
+    }
+  }
+
   summary() {
     return {
       tournamentId: this.id,
@@ -131,7 +139,7 @@ class Tournament {
       const remainingBefore = table.game.players.filter(x => !x.leftTable).length;
       const place = remainingBefore; // last of those still seated
       this.placements.push({ userId: p.userId, username: p.name, isBot: p.isBot, place });
-      this.io.toTable(table.id, 'tournament:eliminated', { userId: p.userId, username: p.name, place });
+      this.notifyHumans('tournament:eliminated', { userId: p.userId, username: p.name, place });
       table.removePlayer(p.userId, { cashOut: false });
       if (!p.isBot) this.io.toUser(p.userId, 'tournament:yourPlace', { tournamentId: this.id, place });
     }
@@ -166,14 +174,12 @@ class Tournament {
       }
     });
 
-    if (this.table) {
-      this.io.toTable(this.table.id, 'tournament:finished', {
-        tournamentId: this.id,
-        placements: this.placements,
-        payouts,
-      });
-      this.table.destroy();
-    }
+    this.notifyHumans('tournament:finished', {
+      tournamentId: this.id,
+      placements: this.placements,
+      payouts,
+    });
+    if (this.table) this.table.destroy();
     this.onChanged();
     this.onFinished(this);
   }

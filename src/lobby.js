@@ -103,10 +103,9 @@ class LobbyManager {
 
     client.on('table:leave', () => {
       const table = myTable();
-      if (!table) return;
       this.userTable.delete(userId);
-      table.removePlayer(userId);
-      client.send('table:left', {});
+      if (table) table.removePlayer(userId);
+      client.send('table:left', {}); // always respond so the client never sticks
       this.broadcastLobby();
     });
 
@@ -238,6 +237,9 @@ class LobbyManager {
         this.broadcastLobby();
       },
       onChanged: () => this.broadcastLobby(),
+      onHumanRemoved: (userId) => {
+        if (this.userTable.get(userId)) this.userTable.delete(userId);
+      },
     });
     this.tables.set(table.id, table);
     return table;

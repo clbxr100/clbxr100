@@ -14,6 +14,10 @@ pids
 # Environment variables
 .env
 
+# Game database
+poker.db
+poker.db-*
+
 # IDE
 .vscode/
 .idea/

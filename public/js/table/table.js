@@ -135,6 +135,13 @@ export function initTable() {
   });
   socket.on('tournament:yourPlace', ({ place }) => {
     toast(`You finished ${ordinal(place)}`, place <= 3 ? 'gold' : '');
+    // Eliminated → back to the lobby (the results modal still pops globally).
+    setTimeout(() => {
+      if (store.screen === 'table') {
+        leaveTableView();
+        showScreen('tournaments');
+      }
+    }, 2500);
   });
   socket.on('tournament:finished', ({ placements, payouts }) => {
     const rows = placements.slice(0, Math.max(3, payouts.length)).map(p => {

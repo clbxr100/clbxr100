@@ -106,8 +106,9 @@ const ECONOMY = {
 };
 
 const TOURNAMENT = {
-  startingChips: 1500,
-  handsPerLevel: 8,
+  // POKER_FAST_TOURNEY shrinks stacks/levels so tests finish in seconds.
+  startingChips: process.env.POKER_FAST_TOURNEY ? 150 : 1500,
+  handsPerLevel: process.env.POKER_FAST_TOURNEY ? 2 : 8,
   blindLevels: [
     [10, 20], [15, 30], [25, 50], [50, 100],
     [100, 200], [200, 400], [400, 800], [800, 1600],

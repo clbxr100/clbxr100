@@ -15,7 +15,7 @@ const BOT_EXTRA_MS = 1800;
 let tableCounter = 0;
 
 class Table {
-  constructor({ name, stakes, isPrivate, code, maxPlayers, creatorId, io, tournament = null, onEmpty, onChanged }) {
+  constructor({ name, stakes, isPrivate, code, maxPlayers, creatorId, io, tournament = null, onEmpty, onChanged, onHumanRemoved }) {
     this.id = `t${++tableCounter}_${Math.floor(Math.random() * 1e6)}`;
     this.name = name || 'Poker Table';
     this.stakes = STAKES[stakes] ? stakes : 'low';
@@ -27,6 +27,7 @@ class Table {
     this.tournament = tournament;
     this.onEmpty = onEmpty || (() => {});
     this.onChanged = onChanged || (() => {});
+    this.onHumanRemoved = onHumanRemoved || (() => {});
     this.destroyed = false;
 
     const s = STAKES[this.stakes];
@@ -37,6 +38,10 @@ class Table {
 
   get buyIn() {
     return STAKES[this.stakes].buyIn;
+  }
+
+  hasHumans() {
+    return this.game.players.some(p => !p.isBot && !p.leftTable);
   }
 
   summary() {
@@ -98,7 +103,10 @@ class Table {
     else {
       this.game.players = this.game.players.filter(p => p.userId !== userId);
     }
-    if (!player.isBot) this.systemChat(`${player.name} left the table`);
+    if (!player.isBot) {
+      this.systemChat(`${player.name} left the table`);
+      this.onHumanRemoved(userId);
+    }
 
     const humans = this.game.players.filter(p => !p.isBot && !p.leftTable);
     if (humans.length === 0 && !this.tournament) {
@@ -149,7 +157,10 @@ class Table {
     this.io.toTable(this.id, 'game:turn', { userId: player.userId, deadline: this.turnDeadline });
 
     if (player.isBot) {
-      this.setTimer('bot', BOT_MIN_MS + Math.random() * BOT_EXTRA_MS, () => this.botAct(player.userId));
+      // No spectators → no theater: bots think fast when only bots remain.
+      const delay = process.env.POKER_FAST_TOURNEY ? 60
+        : this.hasHumans() ? BOT_MIN_MS + Math.random() * BOT_EXTRA_MS : 150;
+      this.setTimer('bot', delay, () => this.botAct(player.userId));
     } else {
       this.setTimer('turn', TURN_MS, () => this.timeoutAction(player.userId));
     }
@@ -342,7 +353,8 @@ class Table {
     }
 
     // Celebration window scales with the winning hand.
-    const delay = 3500 + Math.min(6000, winnerRank * 600);
+    const delay = process.env.POKER_FAST_TOURNEY ? 500
+      : this.hasHumans() ? 3500 + Math.min(6000, winnerRank * 600) : 600;
     this.setTimer('nextHand', delay, () => {
       this.clearTimer('nextHand');
       this.startHand();
