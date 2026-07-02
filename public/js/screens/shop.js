@@ -64,6 +64,21 @@ function render() {
       owned: inv[item.id] ? `${inv[item.id]} owned` : '',
       action: buyBtn(item.id, item.price, p.coins),
     })).join('');
+  } else if (category === 'celebrations') {
+    html += card({
+      emoji: '🎉', name: 'Classic', desc: 'The standard tiered celebration',
+      action: !p.celebration ? equippedBtn() : '<button class="btn btn-ghost" data-equip-celebration="">Equip</button>',
+    });
+    html += Object.values(cat.celebrations || {}).map(item => {
+      const owned = (inv[item.id] || 0) > 0;
+      return card({
+        emoji: item.emoji, name: item.name, desc: item.desc,
+        price: owned ? null : item.price,
+        action: owned
+          ? (p.celebration === item.id ? equippedBtn() : `<button class="btn btn-ghost" data-equip-celebration="${item.id}">Equip</button>`)
+          : buyBtn(item.id, item.price, p.coins),
+      });
+    }).join('');
   } else if (category === 'powerups') {
     html += Object.values(cat.powerups).map(item => {
       const held = inv[item.id] || 0;
@@ -94,6 +109,7 @@ function render() {
   }));
   grid.querySelectorAll('[data-equip-avatar]').forEach(b => b.addEventListener('click', () => equip({ avatar: b.dataset.equipAvatar })));
   grid.querySelectorAll('[data-equip-pet]').forEach(b => b.addEventListener('click', () => equip({ pet: b.dataset.equipPet || null })));
+  grid.querySelectorAll('[data-equip-celebration]').forEach(b => b.addEventListener('click', () => equip({ celebration: b.dataset.equipCelebration || null })));
 }
 
 async function equip(body) {

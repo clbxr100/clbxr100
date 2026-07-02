@@ -101,3 +101,47 @@
 .rarity.rare { color: #60a5fa; }
 .rarity.epic { color: #c084fc; }
 .rarity.legendary { color: var(--gold); }
+
+/* ============ LOBBY TABLE CARDS ============ */
+.table-card { border-left: 4px solid var(--line); padding: 12px; }
+.table-card.stake-micro { border-left-color: #9ca3af; }
+.table-card.stake-low { border-left-color: #34d399; }
+.table-card.stake-mid { border-left-color: #60a5fa; }
+.table-card.stake-high { border-left-color: #c084fc; }
+.table-card.stake-whale { border-left-color: var(--gold); }
+
+.mini-felt {
+  position: relative; width: 86px; height: 60px; flex-shrink: 0;
+  background: radial-gradient(100% 100% at 50% 40%, var(--felt) 0%, var(--felt-dark) 90%);
+  border: 2px solid #3d2c17; border-radius: 50% / 42%;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.4);
+}
+.mini-stake {
+  position: absolute; font-size: 8px; font-weight: 900; letter-spacing: 1px;
+  text-transform: uppercase; color: rgba(255, 255, 255, 0.45); top: 4px;
+}
+.mini-seats {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 1px;
+  max-width: 66px; margin-top: 6px;
+}
+.mini-seat { font-size: 12px; line-height: 1.1; width: 15px; text-align: center; }
+.mini-seat.empty::before {
+  content: ''; display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12); border: 1px dashed rgba(255, 255, 255, 0.2);
+}
+.live-dot {
+  position: absolute; top: 4px; right: 8px; width: 8px; height: 8px; border-radius: 50%;
+  background: #ef4444; animation: liveBlink 1.2s infinite;
+}
+.live-text { color: #86efac; }
+@keyframes liveBlink { 50% { opacity: 0.3; } }
+
+.empty-felt {
+  width: 120px; height: 78px; margin: 0 auto 14px;
+  background: radial-gradient(100% 100% at 50% 40%, var(--felt) 0%, var(--felt-dark) 90%);
+  border: 3px solid #3d2c17; border-radius: 50% / 42%;
+  display: flex; align-items: center; justify-content: center; font-size: 30px;
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.4);
+}
+.empty-sub { margin-top: 10px; font-size: 12.5px; opacity: 0.7; }

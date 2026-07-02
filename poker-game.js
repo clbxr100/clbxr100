@@ -112,6 +112,9 @@ class PokerGame {
           usedThisHand: false,
           shield: false,
           doubleDown: false,
+          frozen: false,
+          insurance: false,
+          blindfoldedFrom: null, // community index the victim stops seeing from
         };
       }
     }
@@ -358,15 +361,32 @@ class PokerGame {
     this.pot = 0;
     this.phase = 'handEnded';
     this.currentPlayerIndex = -1;
+    const totalWonBy = { [winner.userId]: amount };
+    const houseBonuses = {};
+    this.payInsurance(totalWonBy, houseBonuses);
     this.lastHandResult = {
       byFold: true,
       pots: [{ amount, winners: [{ userId: winner.userId, amount }] }],
       reveals: [],
       winningHand: { rank: 0, name: 'Last one standing', userIds: [winner.userId] },
-      totalWonBy: { [winner.userId]: amount },
-      houseBonuses: {},
+      totalWonBy,
+      houseBonuses,
     };
     return this.lastHandResult;
+  }
+
+  // Insurance: losers who armed it get half their contribution back from
+  // the house.
+  payInsurance(totalWonBy, houseBonuses) {
+    for (const p of this.players) {
+      const pu = this.powerUps[p.userId];
+      if (!pu || !pu.insurance || totalWonBy[p.userId] || p.totalContributed <= 0) continue;
+      const refund = Math.floor(p.totalContributed * 0.5);
+      if (refund > 0) {
+        p.chips += refund;
+        houseBonuses[p.userId] = (houseBonuses[p.userId] || 0) + refund;
+      }
+    }
   }
 
   // If the biggest contribution is not matched by anyone else still live,
@@ -405,7 +425,21 @@ class PokerGame {
       }
       prev = level;
     }
-    return pots;
+    // A layer nobody can win (a folded player contributed above every live
+    // player) rolls down into the previous pot instead of vanishing.
+    const result = [];
+    let carry = 0;
+    for (const pot of pots) {
+      if (pot.eligible.length === 0) {
+        if (result.length) result[result.length - 1].amount += pot.amount;
+        else carry += pot.amount;
+      } else {
+        pot.amount += carry;
+        carry = 0;
+        result.push(pot);
+      }
+    }
+    return result;
   }
 
   showdown() {
@@ -456,6 +490,7 @@ class PokerGame {
         houseBonuses[userId] = bonus;
       }
     }
+    this.payInsurance(totalWonBy, houseBonuses);
 
     this.pot = 0;
     this.phase = 'handEnded';
@@ -583,6 +618,33 @@ class PokerGame {
         const stolen = Math.floor(this.pot * 0.25);
         if (stolen > 0) this.stealFromPot(actor, stolen);
         result.publicEvent.amount = stolen;
+        break;
+      }
+
+      case 'pu_freeze': {
+        if (target.allIn) return { success: false, message: 'They are all-in — nothing to freeze' };
+        consume();
+        if (!shieldBlocks(target.userId)) {
+          const tpu = this.powerUps[target.userId];
+          if (tpu) tpu.frozen = true;
+          result.publicEvent.frozen = true;
+        }
+        break;
+      }
+
+      case 'pu_insurance':
+        pu.insurance = true;
+        consume();
+        break;
+
+      case 'pu_blindfold': {
+        if (this.phase === 'river') return { success: false, message: 'No more cards coming' };
+        consume();
+        if (!shieldBlocks(target.userId)) {
+          const tpu = this.powerUps[target.userId];
+          if (tpu && tpu.blindfoldedFrom === null) tpu.blindfoldedFrom = this.communityCards.length;
+          result.publicEvent.blindfolded = true;
+        }
         break;
       }
 

@@ -24,7 +24,7 @@ const buyItem = transaction((user, itemId, qty) => {
   const count = Math.max(1, Math.min(10, Math.floor(qty || 1)));
 
   let units, cost;
-  if (item.category === 'avatar' || item.category === 'pet') {
+  if (item.category === 'avatar' || item.category === 'pet' || item.category === 'celebration') {
     if (economy.getQty(user.id, itemId) > 0) throw Object.assign(new Error('Already owned'), { status: 400 });
     units = 1;
     cost = item.price;
@@ -75,6 +75,7 @@ function mount(route) {
       pets: catalog.PETS,
       throwables: catalog.THROWABLES,
       powerups: catalog.POWERUPS,
+      celebrations: catalog.CELEBRATIONS,
       stakes: catalog.STAKES,
       economy: catalog.ECONOMY,
     });
@@ -102,7 +103,15 @@ function mount(route) {
   }));
 
   route('POST', '/api/profile/equip', authed((req, res, { sendJson }) => {
-    const { avatar, pet } = req.body;
+    const { avatar, pet, celebration } = req.body;
+    if (celebration !== undefined) {
+      if (celebration !== null) {
+        if (!catalog.CELEBRATIONS[celebration] || economy.getQty(req.user.id, celebration) < 1) {
+          return sendJson(400, { error: 'You do not own that celebration' });
+        }
+      }
+      db.prepare('UPDATE users SET celebration = ? WHERE id = ?').run(celebration, req.user.id);
+    }
     if (avatar !== undefined) {
       const premium = Object.values(catalog.AVATARS.premium).find(a => a.emoji === avatar);
       const isFree = catalog.AVATARS.free.includes(avatar);

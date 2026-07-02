@@ -3,7 +3,7 @@ import * as socket from '../socket.js';
 import { $, store, fmt, toast, modal, closeModal, showScreen } from '../app.js';
 import { sfx } from '../sound.js';
 import { FX, rectOf } from '../effects/fx.js';
-import { celebrate, powerUpFx } from '../effects/celebrations.js';
+import { celebrate, powerUpFx, playTheme } from '../effects/celebrations.js';
 import { initActions, renderActions, clearPick } from './actions.js';
 import { initChat, resetChat } from './chat.js';
 import { esc } from '../screens/lobby.js';
@@ -50,8 +50,14 @@ export function initTable() {
     if (p && action === 'allin') bannerFlash(`${esc(p.name)} is ALL IN! 🔥`);
   });
 
-  socket.on('game:turn', ({ userId }) => {
-    if (state && userId === myId()) sfx.yourTurn();
+  socket.on('game:turn', ({ userId, frozen }) => {
+    if (!state) return;
+    if (frozen) {
+      const p = findPlayer(userId);
+      if (p) bannerFlash(`❄️ ${esc(p.name)} is frozen — turn skipped!`);
+      return;
+    }
+    if (userId === myId()) sfx.yourTurn();
   });
 
   socket.on('game:powerUpUsed', (event) => {
@@ -79,7 +85,7 @@ export function initTable() {
     }
   });
 
-  socket.on('game:handEnded', ({ result }) => {
+  socket.on('game:handEnded', ({ result, celebrations }) => {
     if (!state || !result) return;
     const winners = result.winningHand ? result.winningHand.userIds : Object.keys(result.totalWonBy || {});
     const total = Object.values(result.totalWonBy || {}).reduce((s, x) => s + x, 0);
@@ -90,6 +96,10 @@ export function initTable() {
         potEl: $('#pot-display'),
         amount: total,
       });
+      // Equipped celebration themes layer on top for each human winner.
+      for (const [userId, theme] of Object.entries(celebrations || {})) {
+        setTimeout(() => playTheme(theme, $('#pot-display'), seatEl(userId)), 600);
+      }
       const names = winners.map(id => findPlayer(id)?.name).filter(Boolean).map(esc).join(', ');
       if (result.byFold) bannerBig(`${names} takes it! 🏆`);
       else bannerBig(`${names} wins ${fmt(total)} — ${esc(result.winningHand?.name || '')}!`);
@@ -228,6 +238,9 @@ function render() {
   if (state.phase !== 'handEnded' && state.phase !== 'waiting') $('#table-banner').innerHTML = '';
   if (state.phase === 'waiting') {
     $('#table-banner').innerHTML = '<span style="font-size:14px;opacity:0.8">Waiting for players…</span>';
+  }
+  if (state.blindfolded && state.phase !== 'handEnded') {
+    $('#table-banner').innerHTML = '<span style="font-size:14px">🙈 You are blindfolded!</span>';
   }
 }
 

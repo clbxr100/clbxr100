@@ -64,6 +64,7 @@ function publicProfile(user) {
     coins: user.coins,
     avatar: user.avatar,
     pet: user.pet,
+    celebration: user.celebration,
     dailyStreak: user.daily_streak,
     lastDailyBonusAt: user.last_daily_bonus_at,
     lastBailoutAt: user.last_bailout_at,

@@ -93,6 +93,50 @@ export function celebrate(rank, { winnerEls = [], potEl, amount = 0 }) {
   setTimeout(cap.restore, 4200); // safety net
 }
 
+// Purchasable win-celebration themes, layered on top of the rank tier.
+const THEMES = {
+  celebration_fireworks(pot) {
+    FX.play('fireworks', { bursts: 8 });
+    sfx.bigWin();
+  },
+  celebration_money() {
+    FX.play('emojiRain', { emojis: ['💸', '🪙', '💵', '💰'], duration: 3000 });
+    sfx.coin();
+    setTimeout(sfx.coin, 400);
+  },
+  celebration_storm(pot) {
+    FX.play('lightning', { x: pot.cx, y: pot.cy });
+    setTimeout(() => FX.play('lightning', { x: pot.cx - 90, y: pot.cy + 50 }), 320);
+    setTimeout(() => FX.play('lightning', { x: pot.cx + 100, y: pot.cy - 20 }), 640);
+    sfx.explosion();
+  },
+  celebration_hearts(pot, winner) {
+    FX.play('burst', {
+      x: winner.cx, y: winner.cy, count: 34, speed: 260, g: 140,
+      life: [0.9, 1.8], emojis: ['💖', '💕', '💘', '💝'], size: [16, 30],
+    });
+    sfx.gift();
+  },
+  celebration_dragon(pot) {
+    FX.play('emojiPop', { x: pot.cx, y: pot.cy - 70, emoji: '🐉', size: 84 });
+    FX.play('burst', {
+      x: pot.cx, y: pot.cy, count: 80, speed: 400, g: 220,
+      life: [0.7, 1.6], colors: ['#f97316', '#ef4444', '#fbbf24', '#7c2d12'], size: [6, 14],
+    });
+    FX.screenShake();
+    sfx.explosion();
+    setTimeout(sfx.bigWin, 450);
+  },
+};
+
+export function playTheme(themeId, potEl, winnerEl) {
+  const fn = THEMES[themeId];
+  if (!fn) return;
+  const pot = potEl ? rectOf(potEl) : { cx: innerWidth / 2, cy: innerHeight * 0.4 };
+  const winner = winnerEl ? rectOf(winnerEl) : pot;
+  fn(pot, winner);
+}
+
 // Power-up moments.
 export function powerUpFx(event, seatEls) {
   const seat = (userId) => {
@@ -100,6 +144,22 @@ export function powerUpFx(event, seatEls) {
     return el ? rectOf(el) : { cx: innerWidth / 2, cy: innerHeight / 2 };
   };
   switch (event.type) {
+    case 'pu_freeze': {
+      if (event.blocked) { FX.play('bubblePop', seat(event.blockedBy)); break; }
+      sfx.powerup();
+      const r = seat(event.targetUserId);
+      FX.play('emojiPop', { x: r.cx, y: r.cy, emoji: '❄️', size: 44 });
+      FX.play('burst', { x: r.cx, y: r.cy, count: 18, speed: 150, g: 80, life: [0.5, 1], colors: ['#bfdbfe', '#e0f2fe', '#60a5fa'], size: [4, 8] });
+      break;
+    }
+    case 'pu_blindfold':
+      if (event.blocked) FX.play('bubblePop', seat(event.blockedBy));
+      else { sfx.powerup(); FX.play('emojiPop', { ...xy(seat(event.targetUserId)), emoji: '🙈', size: 44 }); }
+      break;
+    case 'pu_insurance':
+      sfx.powerup();
+      FX.play('emojiPop', { ...xy(seat(event.userId)), emoji: '🛟', size: 40 });
+      break;
     case 'pu_forcefold':
       if (event.blocked) FX.play('bubblePop', seat(event.blockedBy));
       else { sfx.explosion(); FX.play('skullSlam', { x: seat(event.targetUserId).cx, y: seat(event.targetUserId).cy }); }

@@ -55,6 +55,9 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
 `);
 
+// Additive migrations for existing databases.
+try { db.exec('ALTER TABLE users ADD COLUMN celebration TEXT'); } catch { /* already present */ }
+
 // Purge stale guest accounts (older than 7 days) on boot.
 const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
 const staleGuests = db.prepare('SELECT id FROM users WHERE is_guest = 1 AND created_at < ?').all(cutoff);

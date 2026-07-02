@@ -456,6 +456,23 @@ const effects = {
   emojiPop({ x, y, emoji, size = 34 }) {
     spawnParticles({ x, y, count: 1, speed: 30, g: -80, life: [1, 1.4], emoji, size: [size, size] });
   },
+
+  // Generic particle burst for themed celebrations.
+  burst(opts) {
+    spawnParticles(opts);
+  },
+
+  emojiRain({ emojis = ['🪙'], duration = 2500, size = [18, 30] } = {}) {
+    const end = performance.now() + duration;
+    const timer = setInterval(() => {
+      if (performance.now() > end) { clearInterval(timer); return; }
+      spawnParticles({
+        x: Math.random() * innerWidth, y: -30, count: 3, speed: 60,
+        baseAngle: Math.PI / 2, spread: 0.4, g: 500, life: [1.6, 2.4],
+        emojis, size,
+      });
+    }, 90);
+  },
 };
 
 export const FX = {

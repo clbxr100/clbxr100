@@ -87,4 +87,9 @@ const consumeItem = transaction((userId, itemId) => {
   return true;
 });
 
-module.exports = { adjustCoins, getCoins, claimDailyBonus, claimBailout, addStats, maxStat, getQty, addItem, consumeItem };
+function getEquippedCelebration(userId) {
+  const row = db.prepare('SELECT celebration FROM users WHERE id = ?').get(userId);
+  return row ? row.celebration : null;
+}
+
+module.exports = { adjustCoins, getCoins, claimDailyBonus, claimBailout, addStats, maxStat, getQty, addItem, consumeItem, getEquippedCelebration };

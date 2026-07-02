@@ -55,6 +55,10 @@ class Table {
       bots: this.game.players.filter(p => p.isBot).length,
       blinds: [this.game.smallBlind, this.game.bigBlind],
       buyIn: this.buyIn,
+      inHand: this.game.inHand(),
+      handNumber: this.game.handNumber,
+      players: this.game.players.filter(p => !p.leftTable)
+        .map(p => ({ avatar: p.avatar, name: p.name, isBot: p.isBot })),
       tournamentId: this.tournament ? this.tournament.id : null,
     };
   }
@@ -152,6 +156,16 @@ class Table {
     if (!this.game.inHand()) return;
     const player = this.game.currentPlayer();
     if (!player) return;
+
+    // Frozen players lose this turn: auto check/fold after a beat.
+    const pu = this.game.powerUps[player.userId];
+    if (pu && pu.frozen) {
+      pu.frozen = false;
+      this.systemChat(`❄️ ${player.name} is frozen — turn skipped!`);
+      this.io.toTable(this.id, 'game:turn', { userId: player.userId, deadline: Date.now() + 1200, frozen: true });
+      this.setTimer('bot', 1100, () => this.timeoutAction(player.userId));
+      return;
+    }
 
     this.turnDeadline = Date.now() + TURN_MS;
     this.io.toTable(this.id, 'game:turn', { userId: player.userId, deadline: this.turnDeadline });
@@ -279,6 +293,16 @@ class Table {
     for (const priv of result.privateResults) {
       this.io.toUser(priv.userId, 'game:powerUpResult', priv.payload);
     }
+    // Persistent record in chat so nobody argues about what happened.
+    const def = POWERUPS[type];
+    const actor = this.game.getPlayer(userId);
+    const ev = result.publicEvent;
+    const target = ev.targetUserId ? this.game.getPlayer(ev.targetUserId) : null;
+    let text = `${def.emoji} ${actor ? actor.name : '?'} used ${def.name}`;
+    if (target) text += ` on ${target.name}`;
+    if (ev.blocked) text += ' — blocked by a Shield 🛡️';
+    else if (type === 'pu_steal') text += ` and took ${ev.amount} (pot is now ${this.game.pot})`;
+    this.systemChat(text);
   }
 
   // ---- throws / chat -------------------------------------------------------
@@ -332,7 +356,16 @@ class Table {
       }
     }
 
-    this.io.toTable(this.id, 'game:handEnded', { result });
+    // Winners' equipped celebration themes ride along for the client FX.
+    const celebrations = {};
+    for (const userId of Object.keys(result.totalWonBy || {})) {
+      const p = this.game.getPlayer(userId);
+      if (p && !p.isBot) {
+        const theme = economy.getEquippedCelebration(userId);
+        if (theme) celebrations[userId] = theme;
+      }
+    }
+    this.io.toTable(this.id, 'game:handEnded', { result, celebrations });
     this.broadcastState();
 
     if (this.tournament) {
@@ -384,6 +417,12 @@ class Table {
     const viewer = g.getPlayer(viewerId);
     const pu = g.powerUps[viewerId];
 
+    // Blindfolded viewers see later community cards face-down until showdown.
+    let community = g.communityCards;
+    if (pu && pu.blindfoldedFrom !== null && g.phase !== 'handEnded') {
+      community = g.communityCards.map((c, i) => (i >= pu.blindfoldedFrom ? { hidden: true } : c));
+    }
+
     return {
       tableId: this.id,
       name: this.name,
@@ -395,13 +434,14 @@ class Table {
       minRaise: g.minRaise,
       dealerIndex: g.dealerIndex,
       currentPlayerIndex: g.currentPlayerIndex,
-      communityCards: g.communityCards,
+      communityCards: community,
       handNumber: g.handNumber,
       smallBlind: g.smallBlind,
       bigBlind: g.bigBlind,
       turnDeadline: this.turnDeadline,
       tournament: this.tournament ? this.tournament.publicInfo() : null,
       lastHandResult: g.phase === 'handEnded' ? g.lastHandResult : null,
+      blindfolded: !!(pu && pu.blindfoldedFrom !== null && g.phase !== 'handEnded'),
       players: g.players.filter(p => !p.leftTable).map(p => {
         const ppu = g.powerUps[p.userId];
         let cards;

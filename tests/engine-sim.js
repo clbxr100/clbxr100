@@ -262,6 +262,76 @@ section('power-up: future sight & double down');
   }
 }
 
+section('power-up: freeze, insurance, blindfold');
+{
+  // Freeze marks target; Table auto-skips their turn.
+  const g = newGame([1000, 1000, 1000]);
+  g.startHand({ noPowerUps: true });
+  g.powerUps.p0 = { free: 'pu_freeze', usedThisHand: false, shield: false, doubleDown: false, frozen: false, insurance: false, blindfoldedFrom: null };
+  g.powerUps.p1 = { free: null, usedThisHand: false, shield: false, doubleDown: false, frozen: false, insurance: false, blindfoldedFrom: null };
+  const fr = g.usePowerUp('p0', 'pu_freeze', { targetUserId: 'p1', source: 'free' });
+  assert(fr.success && g.powerUps.p1.frozen, 'freeze marks target');
+
+  // Insurance refunds half of a loser's contribution from the house.
+  const g2 = newGame([1000, 1000]);
+  g2.startHand({ noPowerUps: true });
+  g2.powerUps.p0 = { free: 'pu_insurance', usedThisHand: false, shield: false, doubleDown: false, frozen: false, insurance: false, blindfoldedFrom: null };
+  g2.usePowerUp('p0', 'pu_insurance', { source: 'free' });
+  g2.playerAction('p0', 'raise', 400);
+  g2.playerAction('p1', 'call');
+  while (g2.inHand()) g2.playerAction(g2.currentPlayer().userId, 'check');
+  const r2 = g2.lastHandResult;
+  if (r2.totalWonBy.p0) {
+    assert(!r2.houseBonuses.p0, 'no insurance payout for the winner');
+  } else {
+    const contributed = 400;
+    assert(r2.houseBonuses.p0 === Math.floor(contributed * 0.5), `insurance refunds half of contribution (got ${r2.houseBonuses.p0})`);
+  }
+
+  // Insurance also pays when the insured player folds out.
+  const g3 = newGame([1000, 1000, 1000]);
+  g3.startHand({ noPowerUps: true });
+  g3.powerUps.p2 = { free: 'pu_insurance', usedThisHand: false, shield: false, doubleDown: false, frozen: false, insurance: false, blindfoldedFrom: null };
+  g3.playerAction('p0', 'call');
+  g3.playerAction('p1', 'call');
+  g3.usePowerUp('p2', 'pu_insurance', { source: 'free' });
+  g3.playerAction('p2', 'check');
+  // flop: p1 first to act, p1 bets big, p2 (BB) folds, p0 folds → p1 wins by fold
+  g3.playerAction('p1', 'raise', 100);
+  g3.playerAction('p2', 'fold');
+  g3.playerAction('p0', 'fold');
+  assert(g3.phase === 'handEnded', 'fold-out hand ended');
+  assert(g3.lastHandResult.houseBonuses.p2 === 10, `insured BB got half of 20 back (got ${g3.lastHandResult.houseBonuses.p2})`);
+
+  // Blindfold records the community index it starts at.
+  const g4 = newGame([1000, 1000]);
+  g4.startHand({ noPowerUps: true });
+  g4.powerUps.p0 = { free: 'pu_blindfold', usedThisHand: false, shield: false, doubleDown: false, frozen: false, insurance: false, blindfoldedFrom: null };
+  g4.powerUps.p1 = { free: null, usedThisHand: false, shield: false, doubleDown: false, frozen: false, insurance: false, blindfoldedFrom: null };
+  const bf = g4.usePowerUp('p0', 'pu_blindfold', { targetUserId: 'p1', source: 'free' });
+  assert(bf.success && g4.powerUps.p1.blindfoldedFrom === 0, 'blindfold marks target from current street');
+}
+
+section('regression: steal reduces what the winner collects');
+{
+  const g = newGame([5000, 5000]);
+  g.startHand({ noPowerUps: true });
+  g.playerAction('p0', 'raise', 2000);
+  g.playerAction('p1', 'call');
+  assert(g.pot === 4000, 'pot is 4000');
+  g.powerUps.p0 = { free: 'pu_steal', usedThisHand: false, shield: false, doubleDown: false, frozen: false, insurance: false, blindfoldedFrom: null };
+  g.powerUps.p1 = { free: null, usedThisHand: false, shield: false, doubleDown: false, frozen: false, insurance: false, blindfoldedFrom: null };
+  // flop: p1 (BB) acts first heads-up
+  g.playerAction('p1', 'check');
+  const st = g.usePowerUp('p0', 'pu_steal', { source: 'free' });
+  assert(st.publicEvent.amount === 1000, 'stole exactly 25%');
+  g.playerAction('p0', 'check');
+  while (g.inHand()) g.playerAction(g.currentPlayer().userId, 'check');
+  const won = Object.values(g.lastHandResult.totalWonBy).reduce((s, x) => s + x, 0);
+  assert(won === 3000, `winner collects the reduced pot (got ${won})`);
+  assert(totalChips(g) === 10000, 'chips conserved');
+}
+
 // -------------------------------------------------------------------- fuzz
 section('fuzz: 400 random hands, invariants hold');
 {

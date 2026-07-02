@@ -17,6 +17,12 @@ class LobbyManager {
     this.subscribers = new Set();   // userIds watching the lobby list
     this.graceTimers = new Map();   // userId -> timeout
 
+    // Keep lobby "live hand" indicators fresh for anyone watching the list.
+    const ticker = setInterval(() => {
+      if (this.subscribers.size > 0) this.broadcastLobby();
+    }, 5000);
+    ticker.unref();
+
     this.io = {
       toUser: (userId, event, data) => {
         const sock = this.sockets.get(userId);

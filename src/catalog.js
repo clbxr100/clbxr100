@@ -51,6 +51,34 @@ const POWERUPS = {
     freeWeight: 2, price: 0, buyable: false, maxHeld: 1,
     needsTarget: true, needsCardIndex: false,
   },
+  pu_freeze: {
+    id: 'pu_freeze', name: 'Time Freeze', emoji: '❄️', rarity: 'epic',
+    desc: 'Freeze an opponent — their next turn is skipped (auto check/fold).',
+    freeWeight: 4, price: 1200, buyable: true, maxHeld: 2,
+    needsTarget: true, needsCardIndex: false,
+  },
+  pu_insurance: {
+    id: 'pu_insurance', name: 'Insurance', emoji: '🛟', rarity: 'rare',
+    desc: 'Lose this hand and the house refunds half of what you put in.',
+    freeWeight: 8, price: 500, buyable: true, maxHeld: 5,
+    needsTarget: false, needsCardIndex: false,
+  },
+  pu_blindfold: {
+    id: 'pu_blindfold', name: 'Blindfold', emoji: '🙈', rarity: 'rare',
+    desc: 'An opponent sees the remaining community cards face-down until showdown.',
+    freeWeight: 8, price: 450, buyable: true, maxHeld: 5,
+    needsTarget: true, needsCardIndex: false,
+  },
+};
+
+// Equippable win-celebration themes: played on top of the standard
+// hand-rank spectacle when YOU drag the pot.
+const CELEBRATIONS = {
+  celebration_fireworks: { id: 'celebration_fireworks', emoji: '🎆', name: 'Grand Fireworks', price: 3000, desc: 'Every win ends in a fireworks show' },
+  celebration_money: { id: 'celebration_money', emoji: '💸', name: 'Money Storm', price: 4000, desc: 'It rains cash when you win' },
+  celebration_storm: { id: 'celebration_storm', emoji: '⛈️', name: 'Thunderstorm', price: 5000, desc: 'Lightning strikes your defeated foes' },
+  celebration_hearts: { id: 'celebration_hearts', emoji: '💖', name: 'Love Bomb', price: 2500, desc: 'Win them over with hearts' },
+  celebration_dragon: { id: 'celebration_dragon', emoji: '🐉', name: 'Dragon Fire', price: 8000, desc: 'A dragon torches the table in your honor' },
 };
 
 const AVATARS = {
@@ -85,9 +113,11 @@ const THROWABLES = {
 };
 
 const STAKES = {
+  micro: { id: 'micro', name: 'Micro', smallBlind: 5, bigBlind: 10, buyIn: 500 },
   low: { id: 'low', name: 'Low', smallBlind: 10, bigBlind: 20, buyIn: 1000 },
   mid: { id: 'mid', name: 'Mid', smallBlind: 50, bigBlind: 100, buyIn: 5000 },
   high: { id: 'high', name: 'High', smallBlind: 250, bigBlind: 500, buyIn: 25000 },
+  whale: { id: 'whale', name: 'Whale', smallBlind: 1000, bigBlind: 2000, buyIn: 100000 },
 };
 
 const ECONOMY = {
@@ -132,7 +162,8 @@ function findItem(itemId) {
   if (AVATARS.premium[itemId]) return { ...AVATARS.premium[itemId], category: 'avatar' };
   if (PETS[itemId]) return { ...PETS[itemId], category: 'pet' };
   if (THROWABLES[itemId]) return { ...THROWABLES[itemId], category: 'throwable' };
+  if (CELEBRATIONS[itemId]) return { ...CELEBRATIONS[itemId], category: 'celebration' };
   return null;
 }
 
-module.exports = { POWERUPS, AVATARS, PETS, THROWABLES, STAKES, ECONOMY, TOURNAMENT, rollFreePowerUp, findItem };
+module.exports = { POWERUPS, AVATARS, PETS, THROWABLES, CELEBRATIONS, STAKES, ECONOMY, TOURNAMENT, rollFreePowerUp, findItem };

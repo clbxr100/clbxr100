@@ -163,6 +163,15 @@ function maybeUsePowerUp(view, freePowerUp, personality) {
       const t = rich.length ? rich[0] : (toCall > view.bigBlind * 4 ? target : null);
       return t ? { type: 'pu_forcefold', targetUserId: t.userId } : null;
     }
+    case 'pu_freeze': {
+      const aggressor = others.find(o => o.bet >= view.bigBlind * 2);
+      return aggressor ? { type: 'pu_freeze', targetUserId: aggressor.userId } : null;
+    }
+    case 'pu_insurance':
+      return view.pot > view.bigBlind * 6 && chenScore(view.holeCards) < 7 ? { type: 'pu_insurance' } : null;
+    case 'pu_blindfold':
+      return view.phase !== 'river' && target && Math.random() < 0.6
+        ? { type: 'pu_blindfold', targetUserId: target.userId } : null;
     default:
       return null;
   }

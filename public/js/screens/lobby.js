@@ -25,19 +25,36 @@ function renderTables() {
   const list = $('#table-list');
   const tables = lobbyData.tables || [];
   if (tables.length === 0) {
-    list.innerHTML = '<div class="empty-note">No tables yet.<br>Host one and invite your friends! 🎰</div>';
+    list.innerHTML = `<div class="empty-note">
+      <div class="empty-felt">🃏</div>
+      No tables running.<br>Host one and invite your friends!
+      <div class="empty-sub">Tip: add bots so the action never stops 🤖</div>
+    </div>`;
     return;
   }
-  list.innerHTML = tables.map(t => `
-    <div class="row-card">
+  list.innerHTML = tables.map(t => {
+    const seatsHtml = Array.from({ length: Math.min(t.maxPlayers, 8) }, (_, i) => {
+      const p = (t.players || [])[i];
+      return p
+        ? `<span class="mini-seat" title="${esc(p.name)}">${p.avatar}</span>`
+        : '<span class="mini-seat empty"></span>';
+    }).join('');
+    return `
+    <div class="row-card table-card stake-${t.stakes}">
+      <div class="mini-felt">
+        <span class="mini-stake">${cap(t.stakes)}</span>
+        <div class="mini-seats">${seatsHtml}</div>
+        ${t.inHand ? '<span class="live-dot"></span>' : ''}
+      </div>
       <div class="row-main">
-        <div class="row-title">${esc(t.name)} ${t.isPrivate ? '🔒' : ''} ${t.bots ? `<span class="badge">🤖 ${t.bots}</span>` : ''}</div>
-        <div class="row-sub">${cap(t.stakes)} · blinds ${t.blinds[0]}/${t.blinds[1]} · buy-in 🪙${fmt(t.buyIn)} · ${t.seated}/${t.maxPlayers} seats</div>
+        <div class="row-title">${esc(t.name)} ${t.isPrivate ? '🔒' : ''}</div>
+        <div class="row-sub">🪙 ${fmt(t.buyIn)} buy-in · blinds ${t.blinds[0]}/${t.blinds[1]}</div>
+        <div class="row-sub">${t.seated}/${t.maxPlayers} seats${t.bots ? ` · 🤖 ${t.bots} bot${t.bots > 1 ? 's' : ''}` : ''}${t.inHand ? ` · <b class="live-text">hand #${t.handNumber} live</b>` : ' · waiting'}</div>
       </div>
       <button class="btn btn-primary btn-sm" data-join="${t.tableId}" data-private="${t.isPrivate ? 1 : ''}"
-        ${t.seated >= t.maxPlayers ? 'disabled' : ''}>Join</button>
-    </div>
-  `).join('');
+        ${t.seated >= t.maxPlayers ? 'disabled' : ''}>${t.seated >= t.maxPlayers ? 'Full' : 'Join'}</button>
+    </div>`;
+  }).join('');
 
   list.querySelectorAll('[data-join]').forEach(btn => btn.addEventListener('click', () => {
     if (btn.dataset.private) {
