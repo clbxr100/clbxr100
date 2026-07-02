@@ -95,7 +95,10 @@ class Tournament {
         userId: e.userId, name: e.username, avatar: e.avatar, pet: e.pet,
         isBot: false, chips: this.startingChips,
       });
+    }
+    for (const e of this.entrants) {
       this.io.toUser(e.userId, 'tournament:started', { tournamentId: this.id, tableId: this.table.id });
+      this.io.toUser(e.userId, 'table:joined', { tableId: this.table.id, state: this.table.filterFor(e.userId) });
     }
     if (this.fillBots) {
       while (this.table.game.players.length < this.maxPlayers) {
