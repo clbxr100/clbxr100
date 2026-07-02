@@ -122,6 +122,21 @@
   60% { transform: translateY(0) rotate(5deg); }
 }
 .seat-shield { position: absolute; left: -13px; top: -7px; font-size: 15px; filter: drop-shadow(0 0 4px #60a5fa); }
+.table-top-actions { display: flex; align-items: center; gap: 6px; }
+#btn-invite, #btn-sitout { padding: 6px 9px; font-size: 15px; }
+
+.seat-crown {
+  position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
+  font-size: 15px; filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7));
+  animation: crownBob 2.4s ease-in-out infinite;
+}
+@keyframes crownBob { 50% { transform: translateX(-50%) translateY(-3px); } }
+.seat-fire {
+  position: absolute; right: -16px; top: -9px; font-size: 14px;
+  animation: fireFlicker 0.6s ease-in-out infinite;
+}
+@keyframes fireFlicker { 50% { transform: scale(1.25) rotate(6deg); } }
+
 .seat-dealer {
   position: absolute; right: -9px; top: -7px;
   background: #fff; color: #111; font-size: 10px; font-weight: 900;

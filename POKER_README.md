@@ -97,6 +97,16 @@ tests/engine-sim.js    engine verification suite
 filtered per player, Peek results are sent only to the peeker's socket,
 and all coin movements happen server-side inside SQL transactions.
 
+## ☁️ Hosting note (Render free tier)
+
+Render's **free** instances have an ephemeral disk: every deploy and every
+sleep/wake cycle resets `poker.db`, which wipes accounts and coins. That's
+why a login can "stop working" — the account is simply gone; signing up
+again recreates it. To make data permanent: upgrade the service to a paid
+instance, attach a **Disk** (mount path `/data`), and set the env var
+`POKER_DB=/data/poker.db`. Running on your own machine never has this
+problem.
+
 ## 🔧 Handy env vars
 
 | Var | Effect |

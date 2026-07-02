@@ -61,12 +61,33 @@
         <button class="nav-card" id="nav-play"><span class="nav-emoji">🎰</span><span>Play</span><small>Join or host a table</small></button>
         <button class="nav-card" id="nav-tournaments"><span class="nav-emoji">🏆</span><span>Tournaments</span><small>Sit &amp; Go showdowns</small></button>
         <button class="nav-card" id="nav-shop"><span class="nav-emoji">🛍️</span><span>Shop</span><small>Avatars, pets &amp; power-ups</small></button>
+        <button class="nav-card" id="nav-leaderboard"><span class="nav-emoji">🥇</span><span>Leaderboard</span><small>Who runs this town?</small></button>
       </nav>
+      <div class="stats-card" id="quests-card">
+        <h3>📋 Daily Quests</h3>
+        <div id="quests-list"></div>
+      </div>
       <div class="stats-card">
         <h3>Your Stats</h3>
         <div class="stats-grid" id="stats-grid"></div>
       </div>
     </div>
+  </section>
+
+  <!-- ============ LEADERBOARD ============ -->
+  <section id="screen-leaderboard" class="screen hidden">
+    <header class="topbar">
+      <button class="btn btn-ghost" data-nav="dashboard">‹ Back</button>
+      <h2>Leaderboard</h2>
+      <span></span>
+    </header>
+    <div class="tabs shop-tabs" id="lb-tabs">
+      <button class="tab active" data-by="coins">🪙 Richest</button>
+      <button class="tab" data-by="hands_won">🏆 Wins</button>
+      <button class="tab" data-by="biggest_pot">💰 Best Pot</button>
+      <button class="tab" data-by="tournaments_won">🎖️ Tourneys</button>
+    </div>
+    <div class="list-body" id="lb-list"></div>
   </section>
 
   <!-- ============ LOBBY ============ -->
@@ -114,7 +135,11 @@
         <span id="table-name">Table</span>
         <span class="blinds-badge" id="table-blinds"></span>
       </div>
-      <span class="phase-badge" id="table-phase">waiting</span>
+      <div class="table-top-actions">
+        <button class="btn btn-ghost btn-sm" id="btn-invite">📣</button>
+        <button class="btn btn-ghost btn-sm" id="btn-sitout">⏸️</button>
+        <span class="phase-badge" id="table-phase">waiting</span>
+      </div>
     </header>
 
     <div class="felt-wrap">

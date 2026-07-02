@@ -46,7 +46,7 @@ class PokerGame {
     const player = {
       userId, name, avatar, pet: pet || null, isBot: !!isBot,
       chips, cards: [], bet: 0, totalContributed: 0,
-      folded: true, allIn: false, leftTable: false,
+      folded: true, allIn: false, leftTable: false, sittingOut: false,
     };
     this.players.push(player);
     return { success: true, player };
@@ -86,7 +86,7 @@ class PokerGame {
 
   startHand(opts = {}) {
     this.reapLeavers();
-    const eligible = this.players.filter(p => p.chips > 0);
+    const eligible = this.players.filter(p => p.chips > 0 && !p.sittingOut);
     if (eligible.length < 2) return { success: false, message: 'Need at least 2 players with chips' };
 
     this.handNumber++;
@@ -105,8 +105,8 @@ class PokerGame {
       p.bet = 0;
       p.totalContributed = 0;
       p.allIn = false;
-      p.folded = p.chips <= 0; // zero-stack players sit the hand out
-      if (p.chips > 0) {
+      p.folded = p.chips <= 0 || p.sittingOut; // no chips or sitting out → skip the hand
+      if (!p.folded) {
         this.powerUps[p.userId] = {
           free: opts.noPowerUps ? null : rollFreePowerUp(this.rand),
           usedThisHand: false,
@@ -141,7 +141,7 @@ class PokerGame {
     const n = this.players.length;
     for (let step = 1; step <= n; step++) {
       const i = (fromIndex + step + n) % n;
-      if (this.players[i].chips > 0) return i;
+      if (this.players[i].chips > 0 && !this.players[i].sittingOut) return i;
     }
     return fromIndex;
   }
@@ -729,6 +729,7 @@ class PokerGame {
       players: this.players.map(p => ({
         userId: p.userId, name: p.name, avatar: p.avatar, pet: p.pet, isBot: p.isBot,
         chips: p.chips, bet: p.bet, folded: p.folded, allIn: p.allIn, cards: p.cards,
+        sittingOut: p.sittingOut,
       })),
       lastHandResult: this.lastHandResult,
     };

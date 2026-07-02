@@ -34,6 +34,8 @@ class Table {
     this.game = new PokerGame({ smallBlind: s.smallBlind, bigBlind: s.bigBlind });
     this.timers = new Map(); // label -> timeout handle
     this.turnDeadline = null;
+    this.streaks = {};       // userId -> consecutive hand wins
+    this.missedTurns = {};   // userId -> consecutive timeouts (auto sit-out at 2)
   }
 
   get buyIn() {
@@ -186,7 +188,32 @@ class Table {
     const toCall = this.game.currentBet - player.bet;
     const action = toCall > 0 ? 'fold' : 'check';
     this.systemChat(`${player.name} timed out`);
+    if (!player.isBot) {
+      this.missedTurns[userId] = (this.missedTurns[userId] || 0) + 1;
+      if (this.missedTurns[userId] >= 2 && !this.tournament) {
+        player.sittingOut = true;
+        this.systemChat(`⏸️ ${player.name} is sitting out (missed 2 turns)`);
+        this.io.toUser(userId, 'table:sitOut', { sittingOut: true, auto: true });
+      }
+    }
     this.applyAction(userId, action, 0);
+  }
+
+  handleSitOut(userId, sitOut) {
+    const player = this.game.getPlayer(userId);
+    if (!player) return { error: 'Not seated' };
+    if (this.tournament) return { error: 'No sitting out in tournaments — blinds wait for no one' };
+    player.sittingOut = !!sitOut;
+    if (sitOut && this.game.inHand() && !player.folded) {
+      // finish this hand as a fold if it's ever their turn; mark now if acting
+      if (this.game.currentPlayer() === player) this.applyAction(userId, this.game.currentBet - player.bet > 0 ? 'fold' : 'check', 0);
+    }
+    if (!sitOut) this.missedTurns[userId] = 0;
+    this.systemChat(sitOut ? `⏸️ ${player.name} is sitting out` : `▶️ ${player.name} is back`);
+    this.io.toUser(userId, 'table:sitOut', { sittingOut: !!sitOut });
+    this.broadcastState();
+    this.maybeStartHand();
+    return { ok: true };
   }
 
   botAct(userId) {
@@ -240,6 +267,7 @@ class Table {
   handleAction(userId, action, amount) {
     const player = this.game.getPlayer(userId);
     if (!player) return { error: 'Not seated' };
+    this.missedTurns[userId] = 0; // acted on their own — not AFK
     return this.applyAction(userId, action, amount);
   }
 
@@ -278,7 +306,10 @@ class Table {
       return { error: result.message };
     }
 
-    if (!player.isBot) economy.addStats(userId, { powerups_used: 1 });
+    if (!player.isBot) {
+      economy.addStats(userId, { powerups_used: 1 });
+      economy.bumpQuest(userId, 'q_power2');
+    }
     this.announcePowerUp(userId, type, result);
     if (result.handEnded) this.onHandEnd();
     else {
@@ -314,6 +345,7 @@ class Table {
     if (thrower.isBot) return { error: 'Nope' };
     if (!economy.consumeItem(userId, itemId)) return { error: 'You have none left — visit the shop!' };
     economy.addStats(userId, { items_thrown: 1 });
+    economy.bumpQuest(userId, 'q_throw1');
     this.io.toTable(this.id, 'throw:item', { fromUserId: userId, targetUserId, itemId });
     return { ok: true };
   }
@@ -336,11 +368,32 @@ class Table {
     for (const p of this.game.players) {
       if (p.isBot || p.cards.length === 0) continue;
       economy.addStats(p.userId, { hands_played: 1 });
+      economy.bumpQuest(p.userId, 'q_play10');
     }
+    // Win streaks: winners heat up, everyone else dealt in cools off.
+    const wonIds = new Set(Object.keys(result.totalWonBy || {}).map(String));
+    for (const p of this.game.players) {
+      if (p.cards.length === 0) continue;
+      if (wonIds.has(String(p.userId))) {
+        this.streaks[p.userId] = (this.streaks[p.userId] || 0) + 1;
+        if (this.streaks[p.userId] === 3) this.systemChat(`🔥 ${p.name} is on a 3-hand heater!`);
+        if (this.streaks[p.userId] === 5) this.systemChat(`🔥🔥 ${p.name} is UNSTOPPABLE — 5 in a row!`);
+      } else {
+        this.streaks[p.userId] = 0;
+      }
+    }
+    // Hand recap for the chat log.
+    const recapNames = Object.keys(result.totalWonBy || {})
+      .map(id => { const p = this.game.getPlayer(id); return p ? p.name : '?'; }).join(', ');
+    const recapTotal = Object.values(result.totalWonBy || {}).reduce((s, x) => s + x, 0);
+    const how = result.byFold ? 'everyone folded' : (result.winningHand ? result.winningHand.name : '');
+    this.systemChat(`🏁 Hand #${this.game.handNumber}: ${recapNames} won ${recapTotal} (${how})`);
+
     for (const [userId, won] of Object.entries(result.totalWonBy || {})) {
       const p = this.game.getPlayer(userId);
       if (!p || p.isBot) continue;
       economy.addStats(userId, { hands_won: 1 });
+      economy.bumpQuest(userId, 'q_win3');
       economy.maxStat(userId, 'biggest_pot', won);
       if (!this.tournament) {
         let bonus = ECONOMY.handWinBonus;
@@ -428,6 +481,7 @@ class Table {
       name: this.name,
       stakes: this.stakes,
       isPrivate: this.isPrivate,
+      code: this.code, // seated players may share invite links
       phase: g.phase,
       pot: g.pot,
       currentBet: g.currentBet,
@@ -453,6 +507,8 @@ class Table {
           chips: p.chips, bet: p.bet, folded: p.folded, allIn: p.allIn, cards,
           shield: !!(ppu && ppu.shield),
           usedPowerUp: !!(ppu && ppu.usedThisHand),
+          sittingOut: p.sittingOut,
+          streak: this.streaks[p.userId] || 0,
         };
       }),
       you: viewer ? {

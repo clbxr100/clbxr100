@@ -37,6 +37,35 @@ export function initTable() {
     applyState(st);
   });
 
+  $('#btn-invite').addEventListener('click', async () => {
+    if (!state) return;
+    let url = `${location.origin}/?join=${encodeURIComponent(state.tableId)}`;
+    if (state.isPrivate && state.code) url += `&code=${encodeURIComponent(state.code)}`;
+    const text = `Join my poker table "${state.name}" on Hold'em Blitz!`;
+    if (navigator.share) {
+      navigator.share({ title: 'Hold\'em Blitz', text, url }).catch(() => {});
+    } else {
+      try {
+        await navigator.clipboard.writeText(url);
+        toast('📣 Invite link copied!', 'gold');
+      } catch {
+        toast(url); // last resort: show it
+      }
+    }
+  });
+
+  $('#btn-sitout').addEventListener('click', () => {
+    if (!state) return;
+    const me = findPlayer(myId());
+    if (!me) return;
+    socket.send('table:sitOut', { sitOut: !me.sittingOut });
+  });
+
+  socket.on('table:sitOut', ({ sittingOut, auto }) => {
+    if (auto) toast('⏸️ Sitting out after 2 missed turns — tap ▶️ when you\'re back', 'error');
+    else toast(sittingOut ? '⏸️ Sitting out — the table plays on without you' : '▶️ Back in the game!');
+  });
+
   socket.on('game:handStarted', () => {
     peeked.clear();
     clearXray();
@@ -235,6 +264,11 @@ function render() {
   renderHeroCards();
   renderActions(state);
 
+  const me = findPlayer(myId());
+  const sitBtn = $('#btn-sitout');
+  sitBtn.style.display = me && !state.tournament ? '' : 'none';
+  sitBtn.textContent = me && me.sittingOut ? '▶️' : '⏸️';
+
   if (state.phase !== 'handEnded' && state.phase !== 'waiting') $('#table-banner').innerHTML = '';
   if (state.phase === 'waiting') {
     $('#table-banner').innerHTML = '<span style="font-size:14px;opacity:0.8">Waiting for players…</span>';
@@ -297,6 +331,11 @@ function renderSeats() {
     : players;
   const layout = LAYOUTS[Math.min(8, Math.max(1, rotated.length))];
 
+  // Chip leader wears the crown (only when someone is ahead).
+  const maxChips = Math.max(...players.map(p => p.chips));
+  const leaders = players.filter(p => p.chips === maxChips && maxChips > 0);
+  const crownId = leaders.length === 1 ? String(leaders[0].userId) : null;
+
   const seen = new Set();
   rotated.forEach((p, i) => {
     seen.add(String(p.userId)); // dataset values are strings; human ids are numbers
@@ -311,6 +350,8 @@ function renderSeats() {
           <span class="seat-pet hidden"></span>
           <span class="seat-shield hidden">🛡️</span>
           <span class="seat-dealer hidden">D</span>
+          <span class="seat-crown hidden">👑</span>
+          <span class="seat-fire hidden">🔥</span>
           <span class="seat-status"></span>
         </div>
         <div class="peeked-cards hidden"></div>
@@ -332,7 +373,13 @@ function renderSeats() {
     el.querySelector('.seat-chips').textContent = `🪙${fmt(p.chips)}`;
     el.querySelector('.seat-dealer').classList.toggle('hidden', origIndex !== state.dealerIndex);
     el.querySelector('.seat-shield').classList.toggle('hidden', !p.shield);
-    el.querySelector('.seat-status').textContent = p.allIn ? 'ALL IN' : (p.folded && state.phase !== 'waiting' && state.phase !== 'handEnded' ? 'FOLD' : '');
+    el.querySelector('.seat-crown').classList.toggle('hidden', String(p.userId) !== crownId);
+    const fire = el.querySelector('.seat-fire');
+    fire.classList.toggle('hidden', (p.streak || 0) < 3);
+    if (p.streak >= 3) fire.textContent = p.streak >= 5 ? '🔥🔥' : '🔥';
+    el.querySelector('.seat-status').textContent = p.sittingOut ? 'SITTING OUT'
+      : p.allIn ? 'ALL IN'
+      : (p.folded && state.phase !== 'waiting' && state.phase !== 'handEnded' ? 'FOLD' : '');
     el.querySelector('.timer-ring').classList.toggle('hidden', origIndex !== state.currentPlayerIndex || !isPlayingPhase());
 
     const petSpan = el.querySelector('.seat-pet');

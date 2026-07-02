@@ -107,6 +107,13 @@ class LobbyManager {
       this.broadcastLobby();
     });
 
+    client.on('table:sitOut', ({ sitOut } = {}) => {
+      const table = myTable();
+      if (!table) return;
+      const result = table.handleSitOut(userId, !!sitOut);
+      if (result.error) fail(result.error);
+    });
+
     client.on('table:leave', () => {
       const table = myTable();
       this.userTable.delete(userId);

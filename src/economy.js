@@ -87,9 +87,87 @@ const consumeItem = transaction((userId, itemId) => {
   return true;
 });
 
+// ---- daily quests ---------------------------------------------------------
+
+const { questsForDay } = require('./catalog');
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// Increment progress on a quest if it's in today's rotation.
+function bumpQuest(userId, questId, inc = 1) {
+  const day = today();
+  if (!questsForDay(day).some(q => q.id === questId)) return;
+  db.prepare(`
+    INSERT INTO quest_progress (user_id, day, quest_id, progress) VALUES (?, ?, ?, ?)
+    ON CONFLICT(user_id, day, quest_id) DO UPDATE SET progress = progress + excluded.progress
+  `).run(userId, day, questId, inc);
+}
+
+function getQuests(userId) {
+  const day = today();
+  return questsForDay(day).map(q => {
+    const row = db.prepare('SELECT progress, claimed FROM quest_progress WHERE user_id = ? AND day = ? AND quest_id = ?')
+      .get(userId, day, q.id);
+    return {
+      ...q,
+      progress: Math.min(q.target, row ? row.progress : 0),
+      claimed: !!(row && row.claimed),
+    };
+  });
+}
+
+const claimQuest = transaction((userId, questId) => {
+  const day = today();
+  const quest = questsForDay(day).find(q => q.id === questId);
+  if (!quest) return { error: 'That quest is not active today' };
+  const row = db.prepare('SELECT progress, claimed FROM quest_progress WHERE user_id = ? AND day = ? AND quest_id = ?')
+    .get(userId, day, questId);
+  if (!row || row.progress < quest.target) return { error: 'Quest not complete yet' };
+  if (row.claimed) return { error: 'Already claimed' };
+  db.prepare('UPDATE quest_progress SET claimed = 1 WHERE user_id = ? AND day = ? AND quest_id = ?').run(userId, day, questId);
+  const coins = adjustCoins(userId, quest.reward, 'quest_reward', questId);
+  return { reward: quest.reward, coins };
+});
+
+// ---- leaderboard ----------------------------------------------------------
+
+const LEADERBOARD_COLS = {
+  coins: 'u.coins',
+  hands_won: 's.hands_won',
+  biggest_pot: 's.biggest_pot',
+  tournaments_won: 's.tournaments_won',
+};
+
+function leaderboard(by, meId) {
+  const col = LEADERBOARD_COLS[by] || LEADERBOARD_COLS.coins;
+  const rows = db.prepare(`
+    SELECT u.id AS userId, u.username, u.avatar, u.is_guest AS isGuest, ${col} AS value
+    FROM users u JOIN stats s ON s.user_id = u.id
+    WHERE ${col} > 0
+    ORDER BY value DESC, u.created_at ASC
+    LIMIT 20
+  `).all();
+  let me = null;
+  if (meId) {
+    const mine = db.prepare(`
+      SELECT COUNT(*) + 1 AS rank FROM users u JOIN stats s ON s.user_id = u.id
+      WHERE ${col} > (SELECT ${col} FROM users u JOIN stats s ON s.user_id = u.id WHERE u.id = ?)
+    `).get(meId);
+    const myVal = db.prepare(`SELECT ${col} AS value FROM users u JOIN stats s ON s.user_id = u.id WHERE u.id = ?`).get(meId);
+    me = { rank: mine ? mine.rank : null, value: myVal ? myVal.value : 0 };
+  }
+  return { rows, me };
+}
+
 function getEquippedCelebration(userId) {
   const row = db.prepare('SELECT celebration FROM users WHERE id = ?').get(userId);
   return row ? row.celebration : null;
 }
 
-module.exports = { adjustCoins, getCoins, claimDailyBonus, claimBailout, addStats, maxStat, getQty, addItem, consumeItem, getEquippedCelebration };
+module.exports = {
+  adjustCoins, getCoins, claimDailyBonus, claimBailout, addStats, maxStat,
+  getQty, addItem, consumeItem, getEquippedCelebration,
+  bumpQuest, getQuests, claimQuest, leaderboard,
+};

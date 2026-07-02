@@ -90,6 +90,21 @@ function mount(route) {
     }
   }));
 
+  route('GET', '/api/quests', authed((req, res, { sendJson }) => {
+    sendJson(200, { quests: economy.getQuests(req.user.id) });
+  }));
+
+  route('POST', '/api/quests/claim', authed((req, res, { sendJson }) => {
+    const result = economy.claimQuest(req.user.id, String(req.body.questId || ''));
+    if (result.error) return sendJson(400, result);
+    sendJson(200, { ...result, quests: economy.getQuests(req.user.id), profile: publicProfile(getUser(req.user.id)) });
+  }));
+
+  route('GET', '/api/leaderboard', authed((req, res, { sendJson }) => {
+    const by = String(req.query.get('by') || 'coins');
+    sendJson(200, economy.leaderboard(by, req.user.id));
+  }));
+
   route('POST', '/api/daily-bonus', authed((req, res, { sendJson }) => {
     const result = economy.claimDailyBonus(req.user.id);
     if (result.error) return sendJson(400, result);

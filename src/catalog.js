@@ -145,6 +145,29 @@ const TOURNAMENT = {
   ],
 };
 
+// Daily quests: 3 of these rotate in each day, tracked per user.
+const QUESTS = {
+  q_play10: { id: 'q_play10', name: 'Grinder', desc: 'Play 10 hands', emoji: '🃏', target: 10, reward: 200 },
+  q_win3: { id: 'q_win3', name: 'On a Heater', desc: 'Win 3 hands', emoji: '🏆', target: 3, reward: 300 },
+  q_power2: { id: 'q_power2', name: 'Loose Cannon', desc: 'Use 2 power-ups', emoji: '⚡', target: 2, reward: 150 },
+  q_throw1: { id: 'q_throw1', name: 'Food Fight', desc: 'Throw or gift an item', emoji: '🎂', target: 1, reward: 100 },
+  q_tourney1: { id: 'q_tourney1', name: 'Contender', desc: 'Enter a tournament', emoji: '🎖️', target: 1, reward: 250 },
+};
+
+// Deterministic daily rotation: pick 3 quests for a given yyyy-mm-dd.
+function questsForDay(day) {
+  const ids = Object.keys(QUESTS).sort();
+  let h = 0;
+  for (const ch of day) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const picked = [];
+  const pool = [...ids];
+  for (let i = 0; i < 3 && pool.length; i++) {
+    h = (h * 1103515245 + 12345) >>> 0;
+    picked.push(pool.splice(h % pool.length, 1)[0]);
+  }
+  return picked.map(id => QUESTS[id]);
+}
+
 function rollFreePowerUp(rand = Math.random) {
   const entries = Object.values(POWERUPS);
   const total = entries.reduce((s, p) => s + p.freeWeight, 0);
@@ -166,4 +189,4 @@ function findItem(itemId) {
   return null;
 }
 
-module.exports = { POWERUPS, AVATARS, PETS, THROWABLES, CELEBRATIONS, STAKES, ECONOMY, TOURNAMENT, rollFreePowerUp, findItem };
+module.exports = { POWERUPS, AVATARS, PETS, THROWABLES, CELEBRATIONS, STAKES, ECONOMY, TOURNAMENT, QUESTS, questsForDay, rollFreePowerUp, findItem };

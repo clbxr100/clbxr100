@@ -1,12 +1,14 @@
 // Dashboard: coins, daily bonus, bailout, stats, navigation.
 import { api } from '../api.js';
-import { $, store, fmt, toast, setProfile, showScreen } from '../app.js';
+import { $, store, fmt, toast, setProfile, showScreen, onShow } from '../app.js';
 import { sfx } from '../sound.js';
 
 export function initDashboard() {
   $('#nav-play').addEventListener('click', () => showScreen('lobby'));
   $('#nav-tournaments').addEventListener('click', () => showScreen('tournaments'));
   $('#nav-shop').addEventListener('click', () => showScreen('shop'));
+  $('#nav-leaderboard').addEventListener('click', () => showScreen('leaderboard'));
+  onShow('dashboard', loadQuests);
 
   $('#btn-daily').addEventListener('click', async () => {
     try {
@@ -56,6 +58,47 @@ export function renderDashboard() {
     [s.items_thrown, 'Thrown'],
     [`${s.tournaments_won || 0}/${s.tournaments_played || 0}`, 'Tourneys W/P'],
   ].map(([v, l]) => `<div class="stat"><b>${v || 0}</b><span>${l}</span></div>`).join('');
+}
+
+async function loadQuests() {
+  try {
+    const { quests } = await api.get('/api/quests');
+    renderQuests(quests);
+  } catch { /* not signed in yet */ }
+}
+
+function renderQuests(quests) {
+  const list = $('#quests-list');
+  if (!quests || !quests.length) { list.innerHTML = ''; return; }
+  list.innerHTML = quests.map(q => {
+    const pct = Math.min(100, Math.round((q.progress / q.target) * 100));
+    const done = q.progress >= q.target;
+    return `<div class="quest-row">
+      <span class="quest-emoji">${q.emoji}</span>
+      <div class="quest-info">
+        <div class="quest-name">${q.name} <small>${q.desc}</small></div>
+        <div class="quest-bar"><div class="quest-fill" style="width:${pct}%"></div></div>
+      </div>
+      ${q.claimed
+        ? '<span class="quest-done">✓</span>'
+        : done
+          ? `<button class="btn btn-gold btn-sm" data-claim="${q.id}">+${fmt(q.reward)}</button>`
+          : `<span class="quest-progress">${q.progress}/${q.target}</span>`}
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('[data-claim]').forEach(b => b.addEventListener('click', async () => {
+    b.disabled = true;
+    try {
+      const res = await api.post('/api/quests/claim', { questId: b.dataset.claim });
+      setProfile(res.profile);
+      sfx.coin();
+      toast(`📋 Quest complete! +${fmt(res.reward)} coins`, 'gold');
+      renderQuests(res.quests);
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }));
 }
 
 function hoursLeft(ts) {

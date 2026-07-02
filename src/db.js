@@ -57,6 +57,16 @@ db.exec(`
 
 // Additive migrations for existing databases.
 try { db.exec('ALTER TABLE users ADD COLUMN celebration TEXT'); } catch { /* already present */ }
+db.exec(`
+  CREATE TABLE IF NOT EXISTS quest_progress (
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    day TEXT NOT NULL,
+    quest_id TEXT NOT NULL,
+    progress INTEGER NOT NULL DEFAULT 0,
+    claimed INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, day, quest_id)
+  );
+`);
 
 // Purge stale guest accounts (older than 7 days) on boot.
 const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;

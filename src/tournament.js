@@ -74,6 +74,7 @@ class Tournament {
     }
     this.entrants.push({ userId: user.id, username: user.username, avatar: user.avatar, pet: user.pet, isBot: false });
     economy.addStats(user.id, { tournaments_played: 1 });
+    economy.bumpQuest(user.id, 'q_tourney1');
     this.onChanged();
     if (this.entrants.length >= this.maxPlayers) this.start();
     return { ok: true, started: this.state === 'running' };

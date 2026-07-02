@@ -7,6 +7,7 @@ import { initDashboard, renderDashboard } from './screens/dashboard.js';
 import { initLobby } from './screens/lobby.js';
 import { initShop } from './screens/shop.js';
 import { initTournaments } from './screens/tournaments.js';
+import { initLeaderboard } from './screens/leaderboard.js';
 import { initTable, enterTable, leaveTableView } from './table/table.js';
 
 export const store = {
@@ -19,12 +20,14 @@ export const store = {
 const $ = (sel) => document.querySelector(sel);
 export { $ };
 
+let pendingJoin = null; // invite link waiting for auth + socket
+
 export function fmt(n) {
   return Number(n || 0).toLocaleString('en-US');
 }
 
 // ---------- router ----------
-const screens = ['auth', 'dashboard', 'lobby', 'shop', 'tournaments', 'table'];
+const screens = ['auth', 'dashboard', 'lobby', 'shop', 'tournaments', 'leaderboard', 'table'];
 const showHandlers = {};
 
 export function onShow(name, fn) { showHandlers[name] = fn; }
@@ -89,7 +92,16 @@ async function boot() {
   initLobby();
   initShop();
   initTournaments();
+  initLeaderboard();
   initTable();
+
+  // Invite links: ?join=<tableId>&code=<code> auto-joins after sign-in.
+  const params = new URLSearchParams(location.search);
+  if (params.get('join')) {
+    pendingJoin = { tableId: params.get('join'), code: params.get('code') || undefined };
+    history.replaceState(null, '', location.pathname);
+    toast('🎟️ Invite accepted — sign in to join the table!');
+  }
 
   // nav buttons with data-nav
   document.querySelectorAll('[data-nav]').forEach(btn => {
@@ -103,7 +115,14 @@ async function boot() {
   $('#btn-logout').addEventListener('click', logout);
 
   // global socket events
-  socket.on('hello', ({ profile }) => setProfile(profile));
+  socket.on('hello', ({ profile }) => {
+    setProfile(profile);
+    if (pendingJoin) {
+      const join = pendingJoin;
+      pendingJoin = null;
+      socket.send('lobby:joinTable', { tableId: join.tableId, code: join.code });
+    }
+  });
   socket.on('error', ({ message, code }) => {
     toast(message, 'error');
     sfx.error();
