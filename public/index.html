@@ -62,6 +62,7 @@
         <button class="nav-card" id="nav-tournaments"><span class="nav-emoji">🏆</span><span>Tournaments</span><small>Sit &amp; Go showdowns</small></button>
         <button class="nav-card" id="nav-shop"><span class="nav-emoji">🛍️</span><span>Shop</span><small>Avatars, pets &amp; power-ups</small></button>
         <button class="nav-card" id="nav-leaderboard"><span class="nav-emoji">🥇</span><span>Leaderboard</span><small>Who runs this town?</small></button>
+        <button class="nav-card" id="nav-friends"><span class="nav-emoji">👥</span><span>Friends</span><small>See who's online, chat &amp; join<span class="chat-unread hidden" id="friends-unread">0</span></small></button>
       </nav>
       <div class="stats-card" id="quests-card">
         <h3>📋 Daily Quests</h3>
@@ -70,6 +71,39 @@
       <div class="stats-card">
         <h3>Your Stats</h3>
         <div class="stats-grid" id="stats-grid"></div>
+      </div>
+      <div class="stats-card">
+        <h3>🏅 Achievements <small id="ach-count"></small></h3>
+        <div class="ach-grid" id="ach-grid"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FRIENDS ============ -->
+  <section id="screen-friends" class="screen hidden">
+    <header class="topbar">
+      <button class="btn btn-ghost" data-nav="dashboard">‹ Back</button>
+      <h2>Friends</h2>
+      <span></span>
+    </header>
+    <div class="list-body" id="friends-body">
+      <div class="add-friend-row">
+        <input type="text" id="friend-name" placeholder="Add by username…" maxlength="16">
+        <button class="btn btn-primary" id="friend-add">Add</button>
+      </div>
+      <div id="friend-requests"></div>
+      <div id="friend-list"></div>
+    </div>
+    <!-- DM sheet -->
+    <div class="sheet hidden" id="dm-sheet">
+      <div class="sheet-inner chat-inner">
+        <h3 id="dm-title">💬</h3>
+        <div class="chat-messages" id="dm-messages"></div>
+        <div class="chat-input-row">
+          <input id="dm-input" type="text" placeholder="Message…" maxlength="300">
+          <button class="btn btn-primary" id="dm-send">➤</button>
+        </div>
+        <button class="btn btn-ghost" id="dm-close">Close</button>
       </div>
     </div>
   </section>
@@ -85,7 +119,7 @@
       <button class="tab active" data-by="coins">🪙 Richest</button>
       <button class="tab" data-by="hands_won">🏆 Wins</button>
       <button class="tab" data-by="biggest_pot">💰 Best Pot</button>
-      <button class="tab" data-by="tournaments_won">🎖️ Tourneys</button>
+      <button class="tab" data-by="weekly">📅 Weekly</button>
     </div>
     <div class="list-body" id="lb-list"></div>
   </section>

@@ -5,6 +5,8 @@ const path = require('path');
 const { createApp } = require('./src/webserver');
 const ws = require('./src/ws');
 const shop = require('./src/shop');
+const social = require('./src/social');
+const presence = require('./src/presence');
 const { verifyToken, getUser } = require('./src/auth');
 const LobbyManager = require('./src/lobby');
 
@@ -12,8 +14,13 @@ const PORT = process.env.PORT || 3000;
 
 const { server, route } = createApp({ staticDir: path.join(__dirname, 'public') });
 shop.mount(route);
+social.mount(route);
 
 const lobby = new LobbyManager();
+presence.register(lobby);
+social.settleSeasons();
+const seasonTick = setInterval(() => social.settleSeasons(), 60 * 60 * 1000);
+seasonTick.unref();
 
 ws.attach(server, {
   path: '/ws',

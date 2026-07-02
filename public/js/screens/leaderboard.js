@@ -5,7 +5,7 @@ import { esc } from './lobby.js';
 
 let by = 'coins';
 
-const LABELS = { coins: '🪙', hands_won: '🏆', biggest_pot: '💰', tournaments_won: '🎖️' };
+const LABELS = { coins: '🪙', hands_won: '🏆', biggest_pot: '💰', weekly: '📅' };
 
 export function initLeaderboard() {
   onShow('leaderboard', render);
@@ -21,6 +21,7 @@ export function initLeaderboard() {
 async function render() {
   const list = $('#lb-list');
   list.innerHTML = '<div class="empty-note"><span class="spin">🂠</span></div>';
+  if (by === 'weekly') return renderWeekly(list);
   try {
     const { rows, me } = await api.get(`/api/leaderboard?by=${by}`);
     if (!rows.length) {
@@ -44,5 +45,35 @@ async function render() {
         : '');
   } catch (err) {
     list.innerHTML = `<div class="empty-note">Couldn't load the board (${esc(err.message)})</div>`;
+  }
+}
+
+async function renderWeekly(list) {
+  try {
+    const { week, endsAt, prizes, rows, me, lastPodium } = await api.get('/api/season');
+    const daysLeft = Math.max(0, Math.ceil((endsAt - Date.now()) / 86400000));
+    const myId = store.profile?.userId;
+    let html = `<div class="season-head">
+      <b>Season ${esc(week)}</b> · hands won this week · resets in ${daysLeft}d
+      <div class="row-sub">Prizes: ${prizes.map((p, i) => `${['🥇', '🥈', '🥉'][i]} ${fmt(p)}`).join(' · ')}</div>
+    </div>`;
+    if (lastPodium && lastPodium.podium?.length) {
+      html += `<div class="season-head last-podium">
+        <b>Last week (${esc(lastPodium.week)})</b>
+        <div class="row-sub">${lastPodium.podium.map(p => `${['🥇', '🥈', '🥉'][p.place - 1]} ${p.avatar} ${esc(p.username)} (+${fmt(p.prize)})`).join(' · ')}</div>
+      </div>`;
+    }
+    html += rows.length
+      ? rows.map((r, i) => `
+        <div class="row-card lb-row ${r.userId === myId ? 'lb-me' : ''}">
+          <span class="lb-rank">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1)}</span>
+          <span class="lb-avatar">${r.avatar}</span>
+          <div class="row-main"><div class="row-title">${esc(r.username)}${r.userId === myId ? ' <span class="badge green">you</span>' : ''}</div></div>
+          <span class="lb-value">🏆 ${fmt(r.value)}</span>
+        </div>`).join('')
+      : '<div class="empty-note">Nobody has won a hand this week.<br>Free podium spot — go take it! 🏆</div>';
+    list.innerHTML = html;
+  } catch (err) {
+    list.innerHTML = `<div class="empty-note">Couldn't load the season (${esc(err.message)})</div>`;
   }
 }

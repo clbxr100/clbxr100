@@ -8,7 +8,7 @@ export function initDashboard() {
   $('#nav-tournaments').addEventListener('click', () => showScreen('tournaments'));
   $('#nav-shop').addEventListener('click', () => showScreen('shop'));
   $('#nav-leaderboard').addEventListener('click', () => showScreen('leaderboard'));
-  onShow('dashboard', loadQuests);
+  onShow('dashboard', () => { loadQuests(); loadAchievements(); });
 
   $('#btn-daily').addEventListener('click', async () => {
     try {
@@ -99,6 +99,34 @@ function renderQuests(quests) {
       toast(err.message, 'error');
     }
   }));
+}
+
+async function loadAchievements() {
+  try {
+    const { achievements } = await api.get('/api/achievements');
+    const unlocked = achievements.filter(a => a.unlocked).length;
+    $('#ach-count').textContent = `${unlocked}/${achievements.length}`;
+    $('#ach-grid').innerHTML = achievements.map(a => `
+      <button class="ach ${a.unlocked ? 'unlocked' : ''} ${store.profile?.badge === a.id ? 'equipped' : ''}"
+        ${a.unlocked ? `data-badge="${a.id}"` : 'disabled'}
+        title="${a.name}: ${a.desc}">
+        <span class="ach-badge">${a.unlocked ? a.badge : '🔒'}</span>
+        <span class="ach-name">${a.name}</span>
+      </button>`).join('');
+    $('#ach-grid').querySelectorAll('[data-badge]').forEach(b => b.addEventListener('click', async () => {
+      const id = b.dataset.badge;
+      const next = store.profile?.badge === id ? null : id; // tap again to unequip
+      try {
+        const res = await api.post('/api/profile/equip', { badge: next });
+        setProfile(res.profile);
+        sfx.gift();
+        toast(next ? 'Badge equipped — it shows at the table!' : 'Badge removed');
+        loadAchievements();
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    }));
+  } catch { /* signed out */ }
 }
 
 function hoursLeft(ts) {

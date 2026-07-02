@@ -118,7 +118,16 @@ function mount(route) {
   }));
 
   route('POST', '/api/profile/equip', authed((req, res, { sendJson }) => {
-    const { avatar, pet, celebration } = req.body;
+    const { avatar, pet, celebration, badge } = req.body;
+    if (badge !== undefined) {
+      if (badge !== null) {
+        const owned = db.prepare('SELECT 1 FROM achievements WHERE user_id = ? AND achievement_id = ?').get(req.user.id, badge);
+        if (!catalog.ACHIEVEMENTS[badge] || !owned) {
+          return sendJson(400, { error: 'You have not unlocked that badge' });
+        }
+      }
+      db.prepare('UPDATE users SET badge = ? WHERE id = ?').run(badge, req.user.id);
+    }
     if (celebration !== undefined) {
       if (celebration !== null) {
         if (!catalog.CELEBRATIONS[celebration] || economy.getQty(req.user.id, celebration) < 1) {

@@ -5,6 +5,7 @@ const Table = require('./table');
 const Tournament = require('./tournament');
 const { getUser, publicProfile } = require('./auth');
 const economy = require('./economy');
+const social = require('./social');
 
 const DISCONNECT_GRACE_MS = 60000;
 
@@ -156,6 +157,11 @@ class LobbyManager {
       this.io.toTable(table.id, 'chat:message', {
         userId, username: user.username, avatar: user.avatar, text: clean, ts: Date.now(),
       });
+    });
+
+    client.on('dm:send', ({ toUserId, text } = {}) => {
+      const result = social.sendDm(freshUser(), Number(toUserId), text);
+      if (result.error) fail(result.error);
     });
 
     client.on('chat:emoji', ({ emoji } = {}) => {

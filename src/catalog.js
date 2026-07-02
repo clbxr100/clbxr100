@@ -145,6 +145,25 @@ const TOURNAMENT = {
   ],
 };
 
+// Achievements: unlocked from lifetime stats, each grants an equippable
+// badge shown next to your name at the table.
+const ACHIEVEMENTS = {
+  ach_first_blood: { id: 'ach_first_blood', name: 'First Blood', desc: 'Win your first hand', badge: '🩸', stat: 'hands_won', gte: 1 },
+  ach_shark: { id: 'ach_shark', name: 'Card Shark', desc: 'Win 100 hands', badge: '🦈', stat: 'hands_won', gte: 100 },
+  ach_grinder: { id: 'ach_grinder', name: 'The Grinder', desc: 'Play 500 hands', badge: '⚙️', stat: 'hands_played', gte: 500 },
+  ach_bigpot: { id: 'ach_bigpot', name: 'Whale Hunter', desc: 'Drag a 10,000+ pot', badge: '🐋', stat: 'biggest_pot', gte: 10000 },
+  ach_royal: { id: 'ach_royal', name: 'Royalty', desc: 'Hit a Royal Flush', badge: '👑', stat: 'best_hand_rank', gte: 10 },
+  ach_champion: { id: 'ach_champion', name: 'Champion', desc: 'Win a tournament', badge: '🏆', stat: 'tournaments_won', gte: 1 },
+  ach_heater: { id: 'ach_heater', name: 'Heater', desc: 'Win 5 hands in a row', badge: '🔥', stat: 'best_streak', gte: 5 },
+  ach_prankster: { id: 'ach_prankster', name: 'Prankster', desc: 'Throw 25 items', badge: '🤡', stat: 'items_thrown', gte: 25 },
+  ach_wizard: { id: 'ach_wizard', name: 'Power Wizard', desc: 'Use 50 power-ups', badge: '🧙', stat: 'powerups_used', gte: 50 },
+  ach_millionaire: { id: 'ach_millionaire', name: 'High Society', desc: 'Hold 100,000 coins', badge: '🎩', stat: 'coins', gte: 100000 },
+};
+
+const SEASON = {
+  prizes: [2000, 1000, 500], // weekly top 3 by hands won
+};
+
 // Daily quests: 3 of these rotate in each day, tracked per user.
 const QUESTS = {
   q_play10: { id: 'q_play10', name: 'Grinder', desc: 'Play 10 hands', emoji: '🃏', target: 10, reward: 200 },
@@ -189,4 +208,4 @@ function findItem(itemId) {
   return null;
 }
 
-module.exports = { POWERUPS, AVATARS, PETS, THROWABLES, CELEBRATIONS, STAKES, ECONOMY, TOURNAMENT, QUESTS, questsForDay, rollFreePowerUp, findItem };
+module.exports = { POWERUPS, AVATARS, PETS, THROWABLES, CELEBRATIONS, STAKES, ECONOMY, TOURNAMENT, QUESTS, ACHIEVEMENTS, SEASON, questsForDay, rollFreePowerUp, findItem };

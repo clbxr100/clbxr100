@@ -4,8 +4,9 @@
 // toUser(userId, event, data) and callbacks.
 
 const PokerGame = require('../poker-game');
-const { POWERUPS, STAKES, ECONOMY } = require('./catalog');
+const { POWERUPS, STAKES, ECONOMY, ACHIEVEMENTS } = require('./catalog');
 const economy = require('./economy');
+const social = require('./social');
 const bots = require('./bots');
 
 const TURN_MS = 30000;
@@ -78,9 +79,10 @@ class Table {
       }
     }
     const chips = this.tournament ? this.tournament.startingChips : this.buyIn;
+    const badge = user.badge && ACHIEVEMENTS[user.badge] ? ACHIEVEMENTS[user.badge].badge : null;
     this.game.addPlayer({
       userId: user.id, name: user.username, avatar: user.avatar, pet: user.pet,
-      isBot: false, chips,
+      badge, isBot: false, chips,
     });
     this.systemChat(`${user.username} sat down`);
     this.afterSeatingChange();
@@ -378,6 +380,10 @@ class Table {
         this.streaks[p.userId] = (this.streaks[p.userId] || 0) + 1;
         if (this.streaks[p.userId] === 3) this.systemChat(`🔥 ${p.name} is on a 3-hand heater!`);
         if (this.streaks[p.userId] === 5) this.systemChat(`🔥🔥 ${p.name} is UNSTOPPABLE — 5 in a row!`);
+        if (!p.isBot) {
+          economy.maxStat(p.userId, 'best_streak', this.streaks[p.userId]);
+          social.bumpWeeklyWin(p.userId);
+        }
       } else {
         this.streaks[p.userId] = 0;
       }
@@ -420,6 +426,11 @@ class Table {
     }
     this.io.toTable(this.id, 'game:handEnded', { result, celebrations });
     this.broadcastState();
+
+    // Stats just moved — see if anyone crossed an achievement threshold.
+    for (const p of this.game.players) {
+      if (!p.isBot && p.cards.length > 0) social.checkAchievements(p.userId);
+    }
 
     if (this.tournament) {
       this.tournament.onHandEnd(this, result);
@@ -503,7 +514,7 @@ class Table {
         else if (revealed.has(p.userId)) cards = revealed.get(p.userId).cards;
         else cards = p.cards.map(() => ({ hidden: true }));
         return {
-          userId: p.userId, name: p.name, avatar: p.avatar, pet: p.pet, isBot: p.isBot,
+          userId: p.userId, name: p.name, avatar: p.avatar, pet: p.pet, badge: p.badge, isBot: p.isBot,
           chips: p.chips, bet: p.bet, folded: p.folded, allIn: p.allIn, cards,
           shield: !!(ppu && ppu.shield),
           usedPowerUp: !!(ppu && ppu.usedThisHand),

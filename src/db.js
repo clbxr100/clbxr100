@@ -66,7 +66,41 @@ db.exec(`
     claimed INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (user_id, day, quest_id)
   );
+
+  CREATE TABLE IF NOT EXISTS friends (
+    user_id INTEGER NOT NULL REFERENCES users(id),   -- requester
+    friend_id INTEGER NOT NULL REFERENCES users(id), -- recipient
+    status TEXT NOT NULL DEFAULT 'pending',          -- pending | accepted
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (user_id, friend_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS dms (
+    id INTEGER PRIMARY KEY,
+    from_id INTEGER NOT NULL REFERENCES users(id),
+    to_id INTEGER NOT NULL REFERENCES users(id),
+    text TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    read INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE INDEX IF NOT EXISTS idx_dms_pair ON dms (to_id, from_id, created_at);
+
+  CREATE TABLE IF NOT EXISTS weekly_stats (
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    week TEXT NOT NULL,          -- e.g. 2026-W27
+    wins INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, week)
+  );
+
+  CREATE TABLE IF NOT EXISTS achievements (
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    achievement_id TEXT NOT NULL,
+    unlocked_at INTEGER NOT NULL,
+    PRIMARY KEY (user_id, achievement_id)
+  );
 `);
+try { db.exec('ALTER TABLE users ADD COLUMN badge TEXT'); } catch { /* already present */ }
+try { db.exec('ALTER TABLE stats ADD COLUMN best_streak INTEGER DEFAULT 0'); } catch { /* already present */ }
 
 // Purge stale guest accounts (older than 7 days) on boot.
 const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;

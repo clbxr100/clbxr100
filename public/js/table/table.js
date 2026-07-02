@@ -369,7 +369,7 @@ function renderSeats() {
     el.classList.toggle('active', origIndex === state.currentPlayerIndex && state.phase !== 'handEnded' && state.phase !== 'waiting');
     el.classList.toggle('folded', p.folded && state.phase !== 'waiting');
     el.querySelector('.av').textContent = p.avatar || '🙂';
-    el.querySelector('.seat-name').textContent = (p.isBot ? '🤖' : '') + p.name;
+    el.querySelector('.seat-name').textContent = (p.isBot ? '🤖' : '') + p.name + (p.badge ? ` ${p.badge}` : '');
     el.querySelector('.seat-chips').textContent = `🪙${fmt(p.chips)}`;
     el.querySelector('.seat-dealer').classList.toggle('hidden', origIndex !== state.dealerIndex);
     el.querySelector('.seat-shield').classList.toggle('hidden', !p.shield);

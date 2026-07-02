@@ -39,12 +39,12 @@ class PokerGame {
     this.bigBlind = bb;
   }
 
-  addPlayer({ userId, name, avatar, pet, isBot, chips }) {
+  addPlayer({ userId, name, avatar, pet, badge, isBot, chips }) {
     if (this.players.some(p => p.userId === userId)) {
       return { success: false, message: 'Already seated' };
     }
     const player = {
-      userId, name, avatar, pet: pet || null, isBot: !!isBot,
+      userId, name, avatar, pet: pet || null, badge: badge || null, isBot: !!isBot,
       chips, cards: [], bet: 0, totalContributed: 0,
       folded: true, allIn: false, leftTable: false, sittingOut: false,
     };
@@ -52,8 +52,10 @@ class PokerGame {
     return { success: true, player };
   }
 
+  // Coerce both sides: result maps (totalWonBy etc.) carry string keys
+  // while human ids are numbers.
   getPlayer(userId) {
-    return this.players.find(p => p.userId === userId);
+    return this.players.find(p => String(p.userId) === String(userId));
   }
 
   // Mid-hand leavers are folded and reaped between hands so seat indexes

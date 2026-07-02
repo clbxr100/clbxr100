@@ -8,7 +8,9 @@ import { initLobby } from './screens/lobby.js';
 import { initShop } from './screens/shop.js';
 import { initTournaments } from './screens/tournaments.js';
 import { initLeaderboard } from './screens/leaderboard.js';
+import { initFriends } from './screens/friends.js';
 import { initTable, enterTable, leaveTableView } from './table/table.js';
+import { FX } from './effects/fx.js';
 
 export const store = {
   profile: null,
@@ -27,7 +29,7 @@ export function fmt(n) {
 }
 
 // ---------- router ----------
-const screens = ['auth', 'dashboard', 'lobby', 'shop', 'tournaments', 'leaderboard', 'table'];
+const screens = ['auth', 'dashboard', 'lobby', 'shop', 'tournaments', 'leaderboard', 'friends', 'table'];
 const showHandlers = {};
 
 export function onShow(name, fn) { showHandlers[name] = fn; }
@@ -83,9 +85,27 @@ export function logout() {
   showScreen('auth');
 }
 
+// The catalog must survive a failed first fetch (e.g. host cold-start):
+// anything that needs it calls ensureCatalog and we retry until it loads.
+export async function ensureCatalog() {
+  if (store.catalog) return store.catalog;
+  try {
+    store.catalog = await api.get('/api/shop/catalog');
+  } catch {
+    /* still down — caller may retry */
+  }
+  return store.catalog;
+}
+
 // ---------- boot ----------
 async function boot() {
-  store.catalog = await api.get('/api/shop/catalog').catch(() => null);
+  await ensureCatalog();
+  if (!store.catalog) {
+    // keep retrying in the background so screens heal once the host wakes
+    const retry = setInterval(async () => {
+      if (await ensureCatalog()) clearInterval(retry);
+    }, 3000);
+  }
 
   initAuth();
   initDashboard();
@@ -93,7 +113,14 @@ async function boot() {
   initShop();
   initTournaments();
   initLeaderboard();
+  initFriends();
   initTable();
+
+  socket.on('achievement:unlocked', ({ name, badge, desc }) => {
+    toast(`🏅 Achievement unlocked: ${badge} ${name} — ${desc}`, 'gold');
+    sfx.bigWin();
+    FX.play('confettiBurst', { x: innerWidth / 2, y: innerHeight * 0.25, count: 40 });
+  });
 
   // Invite links: ?join=<tableId>&code=<code> auto-joins after sign-in.
   const params = new URLSearchParams(location.search);

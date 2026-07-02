@@ -166,6 +166,36 @@
 .quest-done { color: #86efac; font-weight: 900; font-size: 17px; }
 .quest-row .btn { padding: 7px 12px; font-size: 12px; }
 
+/* ============ FRIENDS ============ */
+.add-friend-row { display: flex; gap: 8px; }
+.add-friend-row input { flex: 1; }
+.presence { position: relative; }
+.presence.online::after {
+  content: ''; position: absolute; right: -3px; bottom: -1px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #22c55e; border: 2px solid var(--bg2);
+}
+
+/* ============ ACHIEVEMENTS ============ */
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 8px; }
+.ach {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: rgba(0, 0, 0, 0.25); border: 1px solid var(--line); border-radius: 12px;
+  padding: 10px 4px; cursor: pointer; color: var(--muted);
+}
+.ach:disabled { opacity: 0.45; cursor: default; }
+.ach.unlocked { color: var(--text); border-color: rgba(251, 191, 36, 0.35); }
+.ach.equipped { border-color: var(--gold); box-shadow: 0 0 10px rgba(251, 191, 36, 0.35); }
+.ach-badge { font-size: 24px; }
+.ach-name { font-size: 10px; font-weight: 800; text-align: center; }
+
+/* ============ SEASON ============ */
+.season-head {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 12px 14px; font-size: 14px;
+}
+.season-head.last-podium { border-color: rgba(251, 191, 36, 0.35); }
+
 /* ============ LEADERBOARD ============ */
 .lb-row { padding: 10px 14px; gap: 10px; }
 .lb-rank { font-size: 16px; font-weight: 900; min-width: 30px; text-align: center; }

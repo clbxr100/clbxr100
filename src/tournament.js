@@ -1,6 +1,7 @@
 // Single-table sit-n-go: entry fees, escalating blinds, eliminations, payouts.
 const { TOURNAMENT, ECONOMY } = require('./catalog');
 const economy = require('./economy');
+const social = require('./social');
 
 let tournamentCounter = 0;
 
@@ -155,7 +156,10 @@ class Tournament {
     this.state = 'finished';
     if (winner) {
       this.placements.push({ userId: winner.userId, username: winner.name, isBot: winner.isBot, place: 1 });
-      if (!winner.isBot) economy.addStats(winner.userId, { tournaments_won: 1 });
+      if (!winner.isBot) {
+        economy.addStats(winner.userId, { tournaments_won: 1 });
+        social.checkAchievements(winner.userId);
+      }
     }
     this.placements.sort((a, b) => a.place - b.place);
 

@@ -1,13 +1,19 @@
 // Shop: avatars, pets, throwables, power-ups. Buy + equip.
 import { api } from '../api.js';
-import { $, store, fmt, onShow, toast, setProfile } from '../app.js';
+import { $, store, fmt, onShow, toast, setProfile, ensureCatalog } from '../app.js';
 import { sfx } from '../sound.js';
 import { esc } from './lobby.js';
 
 let category = 'avatars';
 
 export function initShop() {
-  onShow('shop', render);
+  onShow('shop', async () => {
+    if (!store.catalog) {
+      $('#shop-grid').innerHTML = '<div class="empty-note"><span class="spin">🂠</span> Loading the shop…</div>';
+      await ensureCatalog();
+    }
+    render();
+  });
   document.querySelectorAll('#shop-tabs .tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('#shop-tabs .tab').forEach(t => t.classList.toggle('active', t === tab));
