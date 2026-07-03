@@ -288,7 +288,10 @@ function isRed(card) { return card && (card.suit === '♥' || card.suit === '♦
 
 function cardHtml(card, cls = '') {
   if (!card) return '';
-  if (card.hidden) return `<div class="pcard back ${cls}"></div>`;
+  if (card.hidden) {
+    const back = store.profile?.cardBack || '';
+    return `<div class="pcard back ${back} ${cls}"></div>`;
+  }
   return `<div class="pcard ${isRed(card) ? 'red' : ''} ${cls}" data-face="${cardText(card)}">
     <div>${card.rank}</div><div class="suit">${card.suit}</div></div>`;
 }
@@ -370,7 +373,7 @@ function renderSeats() {
     el.classList.toggle('folded', p.folded && state.phase !== 'waiting');
     el.querySelector('.av').textContent = p.avatar || '🙂';
     el.querySelector('.seat-name').textContent = (p.isBot ? '🤖' : '') + p.name + (p.badge ? ` ${p.badge}` : '');
-    el.querySelector('.seat-chips').textContent = `🪙${fmt(p.chips)}`;
+    el.querySelector('.seat-chips').innerHTML = `🪙${fmt(p.chips)}${p.level ? ` <span class="seat-level">L${p.level}</span>` : ''}`;
     el.querySelector('.seat-dealer').classList.toggle('hidden', origIndex !== state.dealerIndex);
     el.querySelector('.seat-shield').classList.toggle('hidden', !p.shield);
     el.querySelector('.seat-crown').classList.toggle('hidden', String(p.userId) !== crownId);

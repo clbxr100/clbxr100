@@ -164,6 +164,52 @@ const SEASON = {
   prizes: [2000, 1000, 500], // weekly top 3 by hands won
 };
 
+// Table felt themes (personal — changes how YOU see every table).
+const THEMES = {
+  theme_midnight: { id: 'theme_midnight', name: 'Midnight', emoji: '🌃', price: 2000, felt: '#14418c', feltDark: '#0c2b61', trim: '#1e2a4a' },
+  theme_crimson: { id: 'theme_crimson', name: 'Crimson', emoji: '🩸', price: 2000, felt: '#8c1f2f', feltDark: '#5e1520', trim: '#3a1016' },
+  theme_royal: { id: 'theme_royal', name: 'Royal Purple', emoji: '🔮', price: 3000, felt: '#5b21b6', feltDark: '#3b1678', trim: '#2a1152' },
+  theme_sunset: { id: 'theme_sunset', name: 'Sunset', emoji: '🌅', price: 3000, felt: '#b45309', feltDark: '#7c3a06', trim: '#4a2404' },
+  theme_cyber: { id: 'theme_cyber', name: 'Cyber', emoji: '🤖', price: 5000, felt: '#10252b', feltDark: '#0a1518', trim: '#22d3ee' },
+};
+
+// Card back designs (personal view of every face-down card).
+const CARDBACKS = {
+  cb_red: { id: 'cb_red', name: 'Red Classic', emoji: '🟥', price: 800 },
+  cb_gold: { id: 'cb_gold', name: 'Gold Spade', emoji: '🟨', price: 1500 },
+  cb_galaxy: { id: 'cb_galaxy', name: 'Galaxy', emoji: '🌌', price: 2000 },
+  cb_dragon: { id: 'cb_dragon', name: 'Dragon Scale', emoji: '🐲', price: 2500 },
+};
+
+// XP: cumulative threshold for level L is 60*(L-1)^2.
+const XP = {
+  perLevel: 60,
+  rewards: {
+    handPlayed: 8, handWon: 20, bigHand: 60,
+    tournamentPlayed: 40, tournamentWon: 150,
+    questClaim: 25, achievement: 60,
+  },
+  titles: [
+    [1, 'Fish', '🐟'], [3, 'Caller', '📞'], [5, 'Grinder', '⚙️'], [8, 'Bluffer', '🎭'],
+    [12, 'Shark', '🦈'], [16, 'High Roller', '🎩'], [20, 'Card Wizard', '🧙'],
+    [25, 'Poker Boss', '👔'], [30, 'Legend', '🐐'],
+  ],
+};
+
+function levelFromXp(xp) {
+  return Math.floor(Math.sqrt(Math.max(0, xp) / XP.perLevel)) + 1;
+}
+
+function xpForLevel(level) {
+  return XP.perLevel * Math.pow(level - 1, 2);
+}
+
+function titleForLevel(level) {
+  let current = XP.titles[0];
+  for (const t of XP.titles) if (level >= t[0]) current = t;
+  return { title: current[1], emoji: current[2] };
+}
+
 // Daily quests: 3 of these rotate in each day, tracked per user.
 const QUESTS = {
   q_play10: { id: 'q_play10', name: 'Grinder', desc: 'Play 10 hands', emoji: '🃏', target: 10, reward: 200 },
@@ -205,7 +251,13 @@ function findItem(itemId) {
   if (PETS[itemId]) return { ...PETS[itemId], category: 'pet' };
   if (THROWABLES[itemId]) return { ...THROWABLES[itemId], category: 'throwable' };
   if (CELEBRATIONS[itemId]) return { ...CELEBRATIONS[itemId], category: 'celebration' };
+  if (THEMES[itemId]) return { ...THEMES[itemId], category: 'theme' };
+  if (CARDBACKS[itemId]) return { ...CARDBACKS[itemId], category: 'cardback' };
   return null;
 }
 
-module.exports = { POWERUPS, AVATARS, PETS, THROWABLES, CELEBRATIONS, STAKES, ECONOMY, TOURNAMENT, QUESTS, ACHIEVEMENTS, SEASON, questsForDay, rollFreePowerUp, findItem };
+module.exports = {
+  POWERUPS, AVATARS, PETS, THROWABLES, CELEBRATIONS, STAKES, ECONOMY, TOURNAMENT,
+  QUESTS, ACHIEVEMENTS, SEASON, THEMES, CARDBACKS, XP,
+  questsForDay, rollFreePowerUp, findItem, levelFromXp, xpForLevel, titleForLevel,
+};

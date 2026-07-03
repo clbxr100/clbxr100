@@ -7,7 +7,7 @@ const ws = require('./src/ws');
 const shop = require('./src/shop');
 const social = require('./src/social');
 const presence = require('./src/presence');
-const { verifyToken, getUser } = require('./src/auth');
+const { verifyToken, getOrRestoreUser } = require('./src/auth');
 const LobbyManager = require('./src/lobby');
 
 const PORT = process.env.PORT || 3000;
@@ -26,7 +26,7 @@ ws.attach(server, {
   path: '/ws',
   onConnection: (client) => {
     const payload = verifyToken(client.query.get('token'));
-    const user = payload && getUser(payload.userId);
+    const user = payload && getOrRestoreUser(payload);
     if (!user) {
       client.send('error', { message: 'Please sign in again', code: 'auth' });
       client.close(4001);

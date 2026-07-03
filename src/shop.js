@@ -1,6 +1,6 @@
 // REST endpoints for profile, shop, daily bonus. Mounted by server.js.
 const { db, transaction } = require('./db');
-const { verifyToken, signup, login, guest, tokenFor, getUser, publicProfile } = require('./auth');
+const { verifyToken, signup, login, guest, tokenFor, getUser, getOrRestoreUser, publicProfile } = require('./auth');
 const economy = require('./economy');
 const catalog = require('./catalog');
 
@@ -10,7 +10,7 @@ function authed(handler) {
     const token = header.startsWith('Bearer ') ? header.slice(7) : null;
     const payload = verifyToken(token);
     if (!payload) return sendJson(401, { error: 'Not signed in' });
-    const user = getUser(payload.userId);
+    const user = getOrRestoreUser(payload); // survives ephemeral-disk wipes
     if (!user) return sendJson(401, { error: 'Account not found' });
     req.user = user;
     return handler(req, res, { sendJson });
@@ -24,7 +24,8 @@ const buyItem = transaction((user, itemId, qty) => {
   const count = Math.max(1, Math.min(10, Math.floor(qty || 1)));
 
   let units, cost;
-  if (item.category === 'avatar' || item.category === 'pet' || item.category === 'celebration') {
+  const ownOnce = ['avatar', 'pet', 'celebration', 'theme', 'cardback'];
+  if (ownOnce.includes(item.category)) {
     if (economy.getQty(user.id, itemId) > 0) throw Object.assign(new Error('Already owned'), { status: 400 });
     units = 1;
     cost = item.price;
@@ -76,6 +77,9 @@ function mount(route) {
       throwables: catalog.THROWABLES,
       powerups: catalog.POWERUPS,
       celebrations: catalog.CELEBRATIONS,
+      themes: catalog.THEMES,
+      cardbacks: catalog.CARDBACKS,
+      xp: catalog.XP,
       stakes: catalog.STAKES,
       economy: catalog.ECONOMY,
     });
@@ -118,7 +122,19 @@ function mount(route) {
   }));
 
   route('POST', '/api/profile/equip', authed((req, res, { sendJson }) => {
-    const { avatar, pet, celebration, badge } = req.body;
+    const { avatar, pet, celebration, badge, tableTheme, cardBack } = req.body;
+    if (tableTheme !== undefined) {
+      if (tableTheme !== null && (!catalog.THEMES[tableTheme] || economy.getQty(req.user.id, tableTheme) < 1)) {
+        return sendJson(400, { error: 'You do not own that theme' });
+      }
+      db.prepare('UPDATE users SET table_theme = ? WHERE id = ?').run(tableTheme, req.user.id);
+    }
+    if (cardBack !== undefined) {
+      if (cardBack !== null && (!catalog.CARDBACKS[cardBack] || economy.getQty(req.user.id, cardBack) < 1)) {
+        return sendJson(400, { error: 'You do not own that card back' });
+      }
+      db.prepare('UPDATE users SET card_back = ? WHERE id = ?').run(cardBack, req.user.id);
+    }
     if (badge !== undefined) {
       if (badge !== null) {
         const owned = db.prepare('SELECT 1 FROM achievements WHERE user_id = ? AND achievement_id = ?').get(req.user.id, badge);

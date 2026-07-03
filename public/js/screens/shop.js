@@ -85,6 +85,35 @@ function render() {
           : buyBtn(item.id, item.price, p.coins),
       });
     }).join('');
+  } else if (category === 'tablefx') {
+    html += card({
+      emoji: '🟢', name: 'Classic Felt', desc: 'The original green',
+      action: !p.tableTheme ? equippedBtn() : '<button class="btn btn-ghost" data-equip-theme="">Equip</button>',
+    });
+    html += Object.values(cat.themes || {}).map(item => {
+      const owned = (inv[item.id] || 0) > 0;
+      return card({
+        emoji: item.emoji, name: item.name, desc: 'Table felt theme',
+        price: owned ? null : item.price,
+        action: owned
+          ? (p.tableTheme === item.id ? equippedBtn() : `<button class="btn btn-ghost" data-equip-theme="${item.id}">Equip</button>`)
+          : buyBtn(item.id, item.price, p.coins),
+      });
+    }).join('');
+    html += card({
+      emoji: '🟦', name: 'Classic Back', desc: 'The original blue card back',
+      action: !p.cardBack ? equippedBtn() : '<button class="btn btn-ghost" data-equip-back="">Equip</button>',
+    });
+    html += Object.values(cat.cardbacks || {}).map(item => {
+      const owned = (inv[item.id] || 0) > 0;
+      return card({
+        emoji: item.emoji, name: item.name, desc: 'Card back design',
+        price: owned ? null : item.price,
+        action: owned
+          ? (p.cardBack === item.id ? equippedBtn() : `<button class="btn btn-ghost" data-equip-back="${item.id}">Equip</button>`)
+          : buyBtn(item.id, item.price, p.coins),
+      });
+    }).join('');
   } else if (category === 'powerups') {
     html += Object.values(cat.powerups).map(item => {
       const held = inv[item.id] || 0;
@@ -116,6 +145,8 @@ function render() {
   grid.querySelectorAll('[data-equip-avatar]').forEach(b => b.addEventListener('click', () => equip({ avatar: b.dataset.equipAvatar })));
   grid.querySelectorAll('[data-equip-pet]').forEach(b => b.addEventListener('click', () => equip({ pet: b.dataset.equipPet || null })));
   grid.querySelectorAll('[data-equip-celebration]').forEach(b => b.addEventListener('click', () => equip({ celebration: b.dataset.equipCelebration || null })));
+  grid.querySelectorAll('[data-equip-theme]').forEach(b => b.addEventListener('click', () => equip({ tableTheme: b.dataset.equipTheme || null })));
+  grid.querySelectorAll('[data-equip-back]').forEach(b => b.addEventListener('click', () => equip({ cardBack: b.dataset.equipBack || null })));
 }
 
 async function equip(body) {

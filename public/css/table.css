@@ -20,7 +20,7 @@
   background:
     radial-gradient(80% 70% at 50% 40%, rgba(255, 255, 255, 0.09), transparent 70%),
     radial-gradient(120% 120% at 50% 50%, var(--felt) 0%, var(--felt-dark) 85%);
-  border: 6px solid #3d2c17;
+  border: 6px solid var(--felt-trim, #3d2c17);
   box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.45), 0 10px 30px rgba(0, 0, 0, 0.5);
   border-radius: 46% / 34%;
 }
@@ -68,7 +68,24 @@
 .pcard.back {
   background: repeating-linear-gradient(45deg, #1e3a8a, #1e3a8a 4px, #172c69 4px, #172c69 8px);
   border: 2px solid #dbeafe22;
+  position: relative;
 }
+.pcard.back.cb_red { background: repeating-linear-gradient(45deg, #991b1b, #991b1b 4px, #6d1414 4px, #6d1414 8px); border-color: #fecaca22; }
+.pcard.back.cb_gold {
+  background: linear-gradient(135deg, #b45309, #fbbf24 50%, #b45309);
+  border-color: #fde68a55;
+}
+.pcard.back.cb_gold::after { content: '♠'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: rgba(0,0,0,0.5); font-size: 1.4em; }
+.pcard.back.cb_galaxy {
+  background: radial-gradient(circle at 30% 30%, #6d28d9, #1e1b4b 75%);
+  border-color: #c4b5fd44;
+}
+.pcard.back.cb_galaxy::after { content: '✨'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 1em; }
+.pcard.back.cb_dragon {
+  background: repeating-radial-gradient(circle at 50% 0%, #14532d, #14532d 5px, #0d3520 5px, #0d3520 10px);
+  border-color: #86efac33;
+}
+.pcard.back.cb_dragon::after { content: '🐉'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 1em; }
 @keyframes dealIn { from { transform: translateY(-26px) rotate(-6deg); opacity: 0; } }
 
 .hero-cards {
@@ -150,6 +167,10 @@
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 .seat-chips { font-size: 11px; font-weight: 800; color: var(--gold); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8); }
+.seat-level {
+  font-size: 9px; font-weight: 900; color: #93c5fd;
+  background: rgba(0, 0, 0, 0.45); padding: 0 4px; border-radius: 999px;
+}
 .seat-cards { display: flex; gap: 2px; min-height: 26px; }
 .seat-cards .pcard { width: 19px; height: 26px; font-size: 8px; border-radius: 3px; }
 .seat-cards .pcard .suit { font-size: 9px; }

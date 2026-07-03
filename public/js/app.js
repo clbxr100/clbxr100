@@ -67,8 +67,24 @@ export function closeModal() {
 export function setProfile(profile) {
   store.profile = profile;
   renderDashboard();
+  applyTheme();
   const shopCoins = $('#shop-coins');
   if (shopCoins && profile) shopCoins.textContent = fmt(profile.coins);
+}
+
+// Personal table theme: swap the felt CSS variables everywhere.
+function applyTheme() {
+  const theme = store.profile?.tableTheme && store.catalog?.themes?.[store.profile.tableTheme];
+  const root = document.documentElement.style;
+  if (theme) {
+    root.setProperty('--felt', theme.felt);
+    root.setProperty('--felt-dark', theme.feltDark);
+    root.setProperty('--felt-trim', theme.trim);
+  } else {
+    root.removeProperty('--felt');
+    root.removeProperty('--felt-dark');
+    root.removeProperty('--felt-trim');
+  }
 }
 
 export async function refreshProfile() {
@@ -120,6 +136,12 @@ async function boot() {
     toast(`🏅 Achievement unlocked: ${badge} ${name} — ${desc}`, 'gold');
     sfx.bigWin();
     FX.play('confettiBurst', { x: innerWidth / 2, y: innerHeight * 0.25, count: 40 });
+  });
+  socket.on('xp:levelUp', ({ level }) => {
+    toast(`⭐ LEVEL UP! You reached level ${level}`, 'gold');
+    sfx.bigWin();
+    FX.play('confettiBurst', { x: innerWidth / 2, y: innerHeight * 0.3, count: 50 });
+    refreshProfile();
   });
 
   // Invite links: ?join=<tableId>&code=<code> auto-joins after sign-in.

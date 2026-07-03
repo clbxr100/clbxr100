@@ -4,7 +4,7 @@
 // toUser(userId, event, data) and callbacks.
 
 const PokerGame = require('../poker-game');
-const { POWERUPS, STAKES, ECONOMY, ACHIEVEMENTS } = require('./catalog');
+const { POWERUPS, STAKES, ECONOMY, ACHIEVEMENTS, XP, levelFromXp } = require('./catalog');
 const economy = require('./economy');
 const social = require('./social');
 const bots = require('./bots');
@@ -84,6 +84,7 @@ class Table {
       userId: user.id, name: user.username, avatar: user.avatar, pet: user.pet,
       badge, isBot: false, chips,
     });
+    this.game.getPlayer(user.id).level = levelFromXp(user.xp || 0);
     this.systemChat(`${user.username} sat down`);
     this.afterSeatingChange();
     return { ok: true };
@@ -371,6 +372,7 @@ class Table {
       if (p.isBot || p.cards.length === 0) continue;
       economy.addStats(p.userId, { hands_played: 1 });
       economy.bumpQuest(p.userId, 'q_play10');
+      economy.addXp(p.userId, XP.rewards.handPlayed);
     }
     // Win streaks: winners heat up, everyone else dealt in cools off.
     const wonIds = new Set(Object.keys(result.totalWonBy || {}).map(String));
@@ -400,6 +402,10 @@ class Table {
       if (!p || p.isBot) continue;
       economy.addStats(userId, { hands_won: 1 });
       economy.bumpQuest(userId, 'q_win3');
+      economy.addXp(userId, XP.rewards.handWon);
+      if (result.winningHand && result.winningHand.rank >= 8 && result.winningHand.userIds.map(String).includes(String(userId))) {
+        economy.addXp(userId, XP.rewards.bigHand);
+      }
       economy.maxStat(userId, 'biggest_pot', won);
       if (!this.tournament) {
         let bonus = ECONOMY.handWinBonus;
@@ -514,7 +520,7 @@ class Table {
         else if (revealed.has(p.userId)) cards = revealed.get(p.userId).cards;
         else cards = p.cards.map(() => ({ hidden: true }));
         return {
-          userId: p.userId, name: p.name, avatar: p.avatar, pet: p.pet, badge: p.badge, isBot: p.isBot,
+          userId: p.userId, name: p.name, avatar: p.avatar, pet: p.pet, badge: p.badge, level: p.level || null, isBot: p.isBot,
           chips: p.chips, bet: p.bet, folded: p.folded, allIn: p.allIn, cards,
           shield: !!(ppu && ppu.shield),
           usedPowerUp: !!(ppu && ppu.usedThisHand),

@@ -42,6 +42,16 @@ export function renderDashboard() {
   $('#dash-name').textContent = p.username + (p.isGuest ? ' (guest)' : '');
   $('#dash-coins').textContent = fmt(p.coins);
 
+  // XP / rank card
+  if (p.rank) {
+    $('#xp-rank').textContent = `${p.rank.emoji} ${p.rank.title}`;
+    $('#xp-level').textContent = `Lv ${p.level}`;
+    const span = Math.max(1, p.nextLevelXp - p.levelStartXp);
+    const into = Math.max(0, p.xp - p.levelStartXp);
+    $('#xp-fill').style.width = `${Math.min(100, Math.round((into / span) * 100))}%`;
+    $('#xp-sub').textContent = `${fmt(into)} / ${fmt(span)} XP to level ${p.level + 1}`;
+  }
+
   const dailyReady = !p.lastDailyBonusAt || Date.now() - p.lastDailyBonusAt >= 24 * 60 * 60 * 1000;
   const daily = $('#btn-daily');
   daily.disabled = !dailyReady;

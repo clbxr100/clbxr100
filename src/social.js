@@ -1,7 +1,7 @@
 // Friends, private messages, weekly seasons, achievements.
 const { db, getMeta, setMeta, transaction } = require('./db');
 const { authed } = require('./shop');
-const { ACHIEVEMENTS, SEASON } = require('./catalog');
+const { ACHIEVEMENTS, SEASON, XP } = require('./catalog');
 const economy = require('./economy');
 const presence = require('./presence');
 
@@ -75,6 +75,7 @@ function checkAchievements(userId) {
   }
   for (const ach of fresh) {
     presence.sendTo(userId, 'achievement:unlocked', { id: ach.id, name: ach.name, badge: ach.badge, desc: ach.desc });
+    economy.addXp(userId, XP.rewards.achievement);
   }
   return fresh;
 }

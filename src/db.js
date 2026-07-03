@@ -101,6 +101,9 @@ db.exec(`
 `);
 try { db.exec('ALTER TABLE users ADD COLUMN badge TEXT'); } catch { /* already present */ }
 try { db.exec('ALTER TABLE stats ADD COLUMN best_streak INTEGER DEFAULT 0'); } catch { /* already present */ }
+try { db.exec('ALTER TABLE users ADD COLUMN xp INTEGER NOT NULL DEFAULT 0'); } catch { /* already present */ }
+try { db.exec('ALTER TABLE users ADD COLUMN table_theme TEXT'); } catch { /* already present */ }
+try { db.exec('ALTER TABLE users ADD COLUMN card_back TEXT'); } catch { /* already present */ }
 
 // Purge stale guest accounts (older than 7 days) on boot.
 const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;

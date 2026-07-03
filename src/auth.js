@@ -4,7 +4,7 @@
 
 const crypto = require('crypto');
 const { db, getJwtSecret } = require('./db');
-const { ECONOMY, AVATARS } = require('./catalog');
+const { ECONOMY, AVATARS, levelFromXp, xpForLevel, titleForLevel } = require('./catalog');
 
 const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const SECRET = getJwtSecret();
@@ -66,6 +66,13 @@ function publicProfile(user) {
     pet: user.pet,
     celebration: user.celebration,
     badge: user.badge,
+    tableTheme: user.table_theme,
+    cardBack: user.card_back,
+    xp: user.xp,
+    level: levelFromXp(user.xp),
+    nextLevelXp: xpForLevel(levelFromXp(user.xp) + 1),
+    levelStartXp: xpForLevel(levelFromXp(user.xp)),
+    rank: titleForLevel(levelFromXp(user.xp)),
     dailyStreak: user.daily_streak,
     lastDailyBonusAt: user.last_daily_bonus_at,
     lastBailoutAt: user.last_bailout_at,
@@ -77,6 +84,29 @@ function publicProfile(user) {
 
 function getUser(userId) {
   return db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+}
+
+// Ephemeral-disk hosts (e.g. Render free tier) wipe the database on every
+// restart. A valid signed token is proof of account ownership, so rather
+// than bouncing the player to the signup screen we quietly recreate their
+// account (fresh starting coins — the old data is gone either way).
+function getOrRestoreUser(payload) {
+  if (!payload || !payload.userId) return null;
+  const existing = getUser(payload.userId);
+  if (existing) return existing;
+  if (!payload.username) return null;
+  const clash = db.prepare('SELECT id FROM users WHERE username = ?').get(payload.username);
+  if (clash) return null; // name re-registered by someone else since the wipe
+  const now = Date.now();
+  const coins = payload.isGuest ? ECONOMY.guestStartCoins : ECONOMY.startCoins;
+  db.prepare(`
+    INSERT INTO users (id, username, password_hash, is_guest, coins, created_at, last_login_at)
+    VALUES (?, ?, NULL, ?, ?, ?, ?)
+  `).run(payload.userId, payload.username, payload.isGuest ? 1 : 0, coins, now, now);
+  db.prepare('INSERT INTO stats (user_id) VALUES (?)').run(payload.userId);
+  db.prepare('INSERT INTO transactions (user_id, amount, reason, ref, created_at) VALUES (?, ?, ?, ?, ?)')
+    .run(payload.userId, coins, 'account_restored', null, now);
+  return getUser(payload.userId);
 }
 
 function createUserRow({ username, passwordHash, isGuest }) {
@@ -131,4 +161,4 @@ function tokenFor(user) {
   return signToken({ userId: user.id, username: user.username, isGuest: !!user.is_guest });
 }
 
-module.exports = { signToken, verifyToken, signup, login, guest, tokenFor, getUser, publicProfile };
+module.exports = { signToken, verifyToken, signup, login, guest, tokenFor, getUser, getOrRestoreUser, publicProfile };

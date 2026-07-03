@@ -87,9 +87,24 @@ const consumeItem = transaction((userId, itemId) => {
   return true;
 });
 
-// ---- daily quests ---------------------------------------------------------
+// ---- XP / levels ----------------------------------------------------------
 
-const { questsForDay } = require('./catalog');
+const { questsForDay, levelFromXp, XP } = require('./catalog');
+const presence = require('./presence');
+
+function addXp(userId, amount) {
+  const row = db.prepare('SELECT xp FROM users WHERE id = ?').get(userId);
+  if (!row) return;
+  const before = levelFromXp(row.xp);
+  const xp = row.xp + amount;
+  db.prepare('UPDATE users SET xp = ? WHERE id = ?').run(xp, userId);
+  const after = levelFromXp(xp);
+  if (after > before) {
+    presence.sendTo(userId, 'xp:levelUp', { level: after });
+  }
+}
+
+// ---- daily quests ---------------------------------------------------------
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -128,6 +143,7 @@ const claimQuest = transaction((userId, questId) => {
   if (row.claimed) return { error: 'Already claimed' };
   db.prepare('UPDATE quest_progress SET claimed = 1 WHERE user_id = ? AND day = ? AND quest_id = ?').run(userId, day, questId);
   const coins = adjustCoins(userId, quest.reward, 'quest_reward', questId);
+  addXp(userId, XP.rewards.questClaim);
   return { reward: quest.reward, coins };
 });
 
@@ -169,5 +185,5 @@ function getEquippedCelebration(userId) {
 module.exports = {
   adjustCoins, getCoins, claimDailyBonus, claimBailout, addStats, maxStat,
   getQty, addItem, consumeItem, getEquippedCelebration,
-  bumpQuest, getQuests, claimQuest, leaderboard,
+  bumpQuest, getQuests, claimQuest, leaderboard, addXp,
 };
