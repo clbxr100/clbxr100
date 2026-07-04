@@ -100,12 +100,33 @@ and all coin movements happen server-side inside SQL transactions.
 ## ☁️ Hosting note (Render free tier)
 
 Render's **free** instances have an ephemeral disk: every deploy and every
-sleep/wake cycle resets `poker.db`, which wipes accounts and coins. That's
-why a login can "stop working" — the account is simply gone; signing up
-again recreates it. To make data permanent: upgrade the service to a paid
-instance, attach a **Disk** (mount path `/data`), and set the env var
-`POKER_DB=/data/poker.db`. Running on your own machine never has this
-problem.
+sleep/wake cycle resets `poker.db`, which wipes accounts and coins. Two
+ways to keep data forever:
+
+### Free: cloud backup to Firebase (recommended)
+
+The server can back up the database to a Firebase Realtime Database every
+minute and restore it automatically on boot (worst case you lose the last
+~60 seconds). Setup, once:
+
+1. Go to [console.firebase.google.com](https://console.firebase.google.com)
+   → **Add project** (any name, Analytics off is fine)
+2. **Build → Realtime Database → Create database** → choose **locked mode**
+3. **Project settings (gear) → Service accounts → Database secrets** →
+   copy the secret
+4. On your host set two env vars:
+   - `BACKUP_URL` = `https://<your-project>-default-rtdb.firebaseio.com/holdem.json`
+   - `BACKUP_SECRET` = the secret you copied
+5. Redeploy. The logs will show `☁️ backup: enabled`.
+
+Any endpoint that answers GET/PUT with JSON works — Firebase is just the
+easiest free one. `JWT_SECRET` should also be set so sessions survive
+restarts.
+
+### Paid: Render disk
+
+Upgrade the service to a paid instance, attach a **Disk** (mount path
+`/data`), and set `POKER_DB=/data/poker.db`.
 
 ## 🔧 Handy env vars
 
@@ -115,6 +136,10 @@ problem.
 | `POKER_DB` | SQLite path (default `./poker.db`) |
 | `JWT_SECRET` | Session token secret (auto-generated otherwise) |
 | `POKER_FAST_TOURNEY` | Tiny stacks + rapid pacing, for testing |
+| `BACKUP_URL` | Cloud backup endpoint (Firebase RTDB `.json` URL) |
+| `BACKUP_SECRET` | Auth secret appended to backup requests |
+| `BACKUP_INTERVAL_MS` | Backup frequency (default 60000) |
+| `ADMIN_USERS` | Comma-separated admin usernames (default `breezyonda1`) |
 
 ## 📝 License
 
