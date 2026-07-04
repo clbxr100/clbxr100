@@ -7,7 +7,7 @@ const { getUser, publicProfile } = require('./auth');
 const economy = require('./economy');
 const social = require('./social');
 
-const DISCONNECT_GRACE_MS = 60000;
+const DISCONNECT_GRACE_MS = 180000; // 3 minutes to come back to a cash table
 
 class LobbyManager {
   constructor() {
@@ -15,6 +15,7 @@ class LobbyManager {
     this.tables = new Map();        // tableId -> Table
     this.tournaments = new Map();   // tournamentId -> Tournament
     this.userTable = new Map();     // userId -> tableId
+    this.userSpectate = new Map();  // userId -> tableId being watched
     this.subscribers = new Set();   // userIds watching the lobby list
     this.graceTimers = new Map();   // userId -> timeout
 
@@ -35,6 +36,7 @@ class LobbyManager {
         for (const p of table.game.players) {
           if (!p.isBot && !p.leftTable) this.io.toUser(p.userId, event, data);
         }
+        for (const userId of table.spectators) this.io.toUser(userId, event, data);
       },
     };
   }
@@ -85,6 +87,7 @@ class LobbyManager {
 
     client.on('lobby:createTable', (opts = {}) => {
       if (myTable()) return fail('Leave your current table first');
+      stopSpectating();
       const table = this.createTable({ ...opts, creatorId: userId });
       const result = table.addHuman(freshUser());
       if (result.error) { table.destroy(); return fail(result.error); }
@@ -95,8 +98,17 @@ class LobbyManager {
       this.broadcastLobby();
     });
 
+    const stopSpectating = () => {
+      const specId = this.userSpectate.get(userId);
+      if (!specId) return;
+      const st = this.tables.get(specId);
+      if (st && !st.destroyed) st.removeSpectator(userId);
+      this.userSpectate.delete(userId);
+    };
+
     client.on('lobby:joinTable', ({ tableId, code } = {}) => {
       if (myTable()) return fail('Leave your current table first');
+      stopSpectating();
       const table = this.tables.get(tableId);
       if (!table || table.destroyed) return fail('Table not found');
       if (table.tournament) return fail('That is a tournament table');
@@ -108,6 +120,19 @@ class LobbyManager {
       this.broadcastLobby();
     });
 
+    client.on('lobby:spectate', ({ tableId } = {}) => {
+      if (myTable()) return fail('You are already playing');
+      stopSpectating();
+      const table = this.tables.get(tableId);
+      if (!table || table.destroyed) return fail('Table not found');
+      if (table.isPrivate) return fail('Private tables cannot be watched');
+      const user = freshUser();
+      table.addSpectator(userId, user.username);
+      this.userSpectate.set(userId, table.id);
+      client.send('table:joined', { tableId: table.id, state: table.filterFor(userId), spectating: true });
+      this.broadcastLobby();
+    });
+
     client.on('table:sitOut', ({ sitOut } = {}) => {
       const table = myTable();
       if (!table) return;
@@ -116,6 +141,7 @@ class LobbyManager {
     });
 
     client.on('table:leave', () => {
+      stopSpectating();
       const table = myTable();
       this.userTable.delete(userId);
       if (table) table.removePlayer(userId);
@@ -149,8 +175,17 @@ class LobbyManager {
       if (result.error) fail(result.error);
     });
 
+    // Spectators share the table chat room.
+    const myRoom = () => {
+      const t = myTable();
+      if (t) return t;
+      const specId = this.userSpectate.get(userId);
+      const st = specId && this.tables.get(specId);
+      return st && !st.destroyed ? st : null;
+    };
+
     client.on('chat:message', ({ text } = {}) => {
-      const table = myTable();
+      const table = myRoom();
       const clean = String(text || '').slice(0, 200).trim();
       if (!table || !clean) return;
       const user = freshUser();
@@ -165,7 +200,7 @@ class LobbyManager {
     });
 
     client.on('chat:emoji', ({ emoji } = {}) => {
-      const table = myTable();
+      const table = myRoom();
       if (!table) return;
       const user = freshUser();
       this.io.toTable(table.id, 'chat:emoji', { userId, username: user.username, emoji: String(emoji || '').slice(0, 8) });
@@ -221,20 +256,33 @@ class LobbyManager {
     client.on('_close', () => {
       if (this.sockets.get(userId) === client) this.sockets.delete(userId);
       this.subscribers.delete(userId);
-      // Hold the seat for a bit in case they come right back.
-      const tableId = this.userTable.get(userId);
-      if (tableId) {
-        const timer = setTimeout(() => {
-          this.graceTimers.delete(userId);
-          if (this.sockets.has(userId)) return; // reconnected
-          const table = this.tables.get(tableId);
-          if (table && !table.destroyed) table.removePlayer(userId);
-          this.userTable.delete(userId);
-          this.broadcastLobby();
-        }, DISCONNECT_GRACE_MS);
-        timer.unref();
-        this.graceTimers.set(userId, timer);
+      // Spectators just stop watching.
+      const specId = this.userSpectate.get(userId);
+      if (specId) {
+        const st = this.tables.get(specId);
+        if (st && !st.destroyed) st.removeSpectator(userId);
+        this.userSpectate.delete(userId);
       }
+      const tableId = this.userTable.get(userId);
+      if (!tableId) return;
+      const table = this.tables.get(tableId);
+      // Tournaments: the seat is held until elimination — blinds eat the
+      // stack while they're away, and they can reconnect any time.
+      if (table && table.tournament) {
+        table.systemChat(`📡 ${getUser(userId)?.username || 'A player'} disconnected — seat held, blinds continue`);
+        return;
+      }
+      // Cash tables: hold the seat for the grace window.
+      const timer = setTimeout(() => {
+        this.graceTimers.delete(userId);
+        if (this.sockets.has(userId)) return; // reconnected
+        const t = this.tables.get(tableId);
+        if (t && !t.destroyed) t.removePlayer(userId);
+        this.userTable.delete(userId);
+        this.broadcastLobby();
+      }, DISCONNECT_GRACE_MS);
+      timer.unref();
+      this.graceTimers.set(userId, timer);
     });
   }
 

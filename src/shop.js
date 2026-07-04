@@ -25,7 +25,7 @@ const buyItem = transaction((user, itemId, qty) => {
   const count = Math.max(1, Math.min(10, Math.floor(qty || 1)));
 
   let units, cost;
-  const ownOnce = ['avatar', 'pet', 'celebration', 'theme', 'cardback'];
+  const ownOnce = ['avatar', 'pet', 'celebration', 'theme', 'cardback', 'soundpack'];
   if (ownOnce.includes(item.category)) {
     if (economy.getQty(user.id, itemId) > 0) throw Object.assign(new Error('Already owned'), { status: 400 });
     units = 1;
@@ -80,6 +80,7 @@ function mount(route) {
       celebrations: catalog.CELEBRATIONS,
       themes: catalog.THEMES,
       cardbacks: catalog.CARDBACKS,
+      soundpacks: catalog.SOUNDPACKS,
       xp: catalog.XP,
       stakes: catalog.STAKES,
       economy: catalog.ECONOMY,
@@ -138,7 +139,13 @@ function mount(route) {
   }));
 
   route('POST', '/api/profile/equip', authed((req, res, { sendJson }) => {
-    const { avatar, pet, celebration, badge, tableTheme, cardBack } = req.body;
+    const { avatar, pet, celebration, badge, tableTheme, cardBack, soundPack } = req.body;
+    if (soundPack !== undefined) {
+      if (soundPack !== null && (!catalog.SOUNDPACKS[soundPack] || economy.getQty(req.user.id, soundPack) < 1)) {
+        return sendJson(400, { error: 'You do not own that sound pack' });
+      }
+      db.prepare('UPDATE users SET sound_pack = ? WHERE id = ?').run(soundPack, req.user.id);
+    }
     if (tableTheme !== undefined) {
       if (tableTheme !== null && (!catalog.THEMES[tableTheme] || economy.getQty(req.user.id, tableTheme) < 1)) {
         return sendJson(400, { error: 'You do not own that theme' });

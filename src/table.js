@@ -37,6 +37,18 @@ class Table {
     this.turnDeadline = null;
     this.streaks = {};       // userId -> consecutive hand wins
     this.missedTurns = {};   // userId -> consecutive timeouts (auto sit-out at 2)
+    this.spectators = new Set(); // userIds watching without a seat
+  }
+
+  addSpectator(userId, username) {
+    this.spectators.add(userId);
+    if (username) this.systemChat(`👁️ ${username} is watching`);
+    this.onChanged();
+  }
+
+  removeSpectator(userId) {
+    this.spectators.delete(userId);
+    this.onChanged();
   }
 
   get buyIn() {
@@ -45,6 +57,12 @@ class Table {
 
   hasHumans() {
     return this.game.players.some(p => !p.isBot && !p.leftTable);
+  }
+
+  // Full pacing (bot think time, celebration windows) whenever anyone is
+  // actually looking at the table.
+  hasAudience() {
+    return this.hasHumans() || this.spectators.size > 0;
   }
 
   summary() {
@@ -56,6 +74,7 @@ class Table {
       maxPlayers: this.maxPlayers,
       seated: this.game.players.length,
       bots: this.game.players.filter(p => p.isBot).length,
+      watching: this.spectators.size,
       blinds: [this.game.smallBlind, this.game.bigBlind],
       buyIn: this.buyIn,
       inHand: this.game.inHand(),
@@ -176,9 +195,9 @@ class Table {
     this.io.toTable(this.id, 'game:turn', { userId: player.userId, deadline: this.turnDeadline });
 
     if (player.isBot) {
-      // No spectators → no theater: bots think fast when only bots remain.
+      // No audience → no theater: bots think fast when nobody is watching.
       const delay = process.env.POKER_FAST_TOURNEY ? 60
-        : this.hasHumans() ? BOT_MIN_MS + Math.random() * BOT_EXTRA_MS : 150;
+        : this.hasAudience() ? BOT_MIN_MS + Math.random() * BOT_EXTRA_MS : 150;
       this.setTimer('bot', delay, () => this.botAct(player.userId));
     } else {
       this.setTimer('turn', TURN_MS, () => this.timeoutAction(player.userId));
@@ -457,7 +476,7 @@ class Table {
 
     // Celebration window scales with the winning hand.
     const delay = process.env.POKER_FAST_TOURNEY ? 500
-      : this.hasHumans() ? 3500 + Math.min(6000, winnerRank * 600) : 600;
+      : this.hasAudience() ? 3500 + Math.min(6000, winnerRank * 600) : 600;
     this.setTimer('nextHand', delay, () => {
       this.clearTimer('nextHand');
       this.startHand();
@@ -473,6 +492,9 @@ class Table {
       if (!p.isBot && !p.leftTable) {
         this.io.toUser(p.userId, 'table:state', this.filterFor(p.userId));
       }
+    }
+    for (const userId of this.spectators) {
+      this.io.toUser(userId, 'table:state', this.filterFor(userId));
     }
   }
 
@@ -567,6 +589,10 @@ class Table {
         this.io.toUser(p.userId, 'table:closed', { tableId: this.id });
       }
     }
+    for (const userId of this.spectators) {
+      this.io.toUser(userId, 'table:closed', { tableId: this.id });
+    }
+    this.spectators.clear();
     this.onEmpty(this);
   }
 }

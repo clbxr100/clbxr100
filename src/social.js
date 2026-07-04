@@ -180,6 +180,37 @@ function mount(route) {
     sendJson(200, { achievements: getAchievements(req.user.id) });
   }));
 
+  // Public profile card for tap-a-player popups at the table.
+  route('GET', '/api/player', authed((req, res, { sendJson }) => {
+    const id = Number(req.query.get('id'));
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+    if (!user) return sendJson(404, { error: 'Player not found' });
+    const stats = db.prepare('SELECT * FROM stats WHERE user_id = ?').get(id) || {};
+    const unlocked = db.prepare('SELECT COUNT(*) AS n FROM achievements WHERE user_id = ?').get(id).n;
+    const { levelFromXp, titleForLevel, ACHIEVEMENTS: ACH } = require('./catalog');
+    const level = levelFromXp(user.xp || 0);
+    sendJson(200, {
+      userId: user.id,
+      username: user.username,
+      avatar: user.avatar,
+      isGuest: !!user.is_guest,
+      level,
+      rank: titleForLevel(level),
+      badge: user.badge && ACH[user.badge] ? ACH[user.badge].badge : null,
+      memberSince: user.created_at,
+      achievements: unlocked,
+      friend: areFriends(req.user.id, id),
+      stats: {
+        hands_played: stats.hands_played || 0,
+        hands_won: stats.hands_won || 0,
+        biggest_pot: stats.biggest_pot || 0,
+        best_hand_rank: stats.best_hand_rank || 0,
+        tournaments_won: stats.tournaments_won || 0,
+        best_streak: stats.best_streak || 0,
+      },
+    });
+  }));
+
   route('GET', '/api/season', authed((req, res, { sendJson }) => {
     settleSeasons();
     const week = isoWeek();

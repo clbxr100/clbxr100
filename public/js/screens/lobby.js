@@ -51,10 +51,17 @@ function renderTables() {
         <div class="row-sub">🪙 ${fmt(t.buyIn)} buy-in · blinds ${t.blinds[0]}/${t.blinds[1]}</div>
         <div class="row-sub">${t.seated}/${t.maxPlayers} seats${t.bots ? ` · 🤖 ${t.bots} bot${t.bots > 1 ? 's' : ''}` : ''}${t.inHand ? ` · <b class="live-text">hand #${t.handNumber} live</b>` : ' · waiting'}</div>
       </div>
-      <button class="btn btn-primary btn-sm" data-join="${t.tableId}" data-private="${t.isPrivate ? 1 : ''}"
-        ${t.seated >= t.maxPlayers ? 'disabled' : ''}>${t.seated >= t.maxPlayers ? 'Full' : 'Join'}</button>
+      <div class="join-col">
+        <button class="btn btn-primary btn-sm" data-join="${t.tableId}" data-private="${t.isPrivate ? 1 : ''}"
+          ${t.seated >= t.maxPlayers ? 'disabled' : ''}>${t.seated >= t.maxPlayers ? 'Full' : 'Join'}</button>
+        ${!t.isPrivate ? `<button class="btn btn-ghost btn-sm" data-watch="${t.tableId}">👁️${t.watching ? ` ${t.watching}` : ''}</button>` : ''}
+      </div>
     </div>`;
   }).join('');
+
+  list.querySelectorAll('[data-watch]').forEach(btn => btn.addEventListener('click', () => {
+    socket.send('lobby:spectate', { tableId: btn.dataset.watch });
+  }));
 
   list.querySelectorAll('[data-join]').forEach(btn => btn.addEventListener('click', () => {
     if (btn.dataset.private) {

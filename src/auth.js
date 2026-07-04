@@ -68,6 +68,7 @@ function publicProfile(user) {
     badge: user.badge,
     tableTheme: user.table_theme,
     cardBack: user.card_back,
+    soundPack: user.sound_pack,
     xp: user.xp,
     level: levelFromXp(user.xp),
     nextLevelXp: xpForLevel(levelFromXp(user.xp) + 1),

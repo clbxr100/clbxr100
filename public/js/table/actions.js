@@ -239,7 +239,15 @@ function startCardPick(p) {
   document.querySelectorAll('#hero-cards .pcard').forEach(el => el.classList.add('selectable'));
 }
 
+// Lets the profile-popup click handler ignore the same tap that consumed
+// a target pick (both listen on the felt).
+let pickConsumedAt = 0;
+export function pickJustConsumed() {
+  return Date.now() - pickConsumedAt < 400;
+}
+
 export function clearPick() {
+  if (pick) pickConsumedAt = Date.now();
   pick = null;
   $('#target-hint').classList.add('hidden');
   document.querySelectorAll('.seat.targetable').forEach(el => el.classList.remove('targetable'));

@@ -171,6 +171,16 @@ const THEMES = {
   theme_royal: { id: 'theme_royal', name: 'Royal Purple', emoji: '🔮', price: 3000, felt: '#5b21b6', feltDark: '#3b1678', trim: '#2a1152' },
   theme_sunset: { id: 'theme_sunset', name: 'Sunset', emoji: '🌅', price: 3000, felt: '#b45309', feltDark: '#7c3a06', trim: '#4a2404' },
   theme_cyber: { id: 'theme_cyber', name: 'Cyber', emoji: '🤖', price: 5000, felt: '#10252b', feltDark: '#0a1518', trim: '#22d3ee' },
+  theme_ocean: { id: 'theme_ocean', name: 'Deep Ocean', emoji: '🌊', price: 2500, felt: '#0e7490', feltDark: '#155e75', trim: '#082f3a' },
+  theme_rose: { id: 'theme_rose', name: 'Neon Rose', emoji: '🌸', price: 3500, felt: '#9d174d', feltDark: '#6b1138', trim: '#f472b6' },
+  theme_carbon: { id: 'theme_carbon', name: 'Carbon', emoji: '🖤', price: 4000, felt: '#27272a', feltDark: '#18181b', trim: '#52525b' },
+};
+
+// Sound packs re-voice every game sound (personal).
+const SOUNDPACKS = {
+  sp_chiptune: { id: 'sp_chiptune', name: 'Chiptune', emoji: '🎮', price: 1000, type: 'triangle', pitch: 1.5 },
+  sp_arcade: { id: 'sp_arcade', name: 'Arcade', emoji: '🕹️', price: 1200, type: 'square', pitch: 1.25 },
+  sp_vegas: { id: 'sp_vegas', name: 'Deep Vegas', emoji: '🎷', price: 1500, type: 'sawtooth', pitch: 0.75 },
 };
 
 // Card back designs (personal view of every face-down card).
@@ -253,11 +263,12 @@ function findItem(itemId) {
   if (CELEBRATIONS[itemId]) return { ...CELEBRATIONS[itemId], category: 'celebration' };
   if (THEMES[itemId]) return { ...THEMES[itemId], category: 'theme' };
   if (CARDBACKS[itemId]) return { ...CARDBACKS[itemId], category: 'cardback' };
+  if (SOUNDPACKS[itemId]) return { ...SOUNDPACKS[itemId], category: 'soundpack' };
   return null;
 }
 
 module.exports = {
   POWERUPS, AVATARS, PETS, THROWABLES, CELEBRATIONS, STAKES, ECONOMY, TOURNAMENT,
-  QUESTS, ACHIEVEMENTS, SEASON, THEMES, CARDBACKS, XP,
+  QUESTS, ACHIEVEMENTS, SEASON, THEMES, CARDBACKS, SOUNDPACKS, XP,
   questsForDay, rollFreePowerUp, findItem, levelFromXp, xpForLevel, titleForLevel,
 };

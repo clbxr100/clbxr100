@@ -3,6 +3,7 @@ import * as socket from '../socket.js';
 import { $, store } from '../app.js';
 import { sfx } from '../sound.js';
 import { esc } from '../screens/lobby.js';
+import { showSeatEmote } from './table.js';
 
 let unread = 0;
 let open = false;
@@ -46,6 +47,7 @@ export function initChat() {
 
   socket.on('chat:emoji', ({ userId, username, emoji }) => {
     floatEmoji(emoji);
+    showSeatEmote(userId, emoji);
     addMessage({ system: true, text: `${username} sent ${emoji}` });
   });
 }

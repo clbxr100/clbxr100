@@ -114,6 +114,20 @@ function render() {
           : buyBtn(item.id, item.price, p.coins),
       });
     }).join('');
+    html += card({
+      emoji: '🔔', name: 'Classic Sounds', desc: 'The original bleeps',
+      action: !p.soundPack ? equippedBtn() : '<button class="btn btn-ghost" data-equip-sound="">Equip</button>',
+    });
+    html += Object.values(cat.soundpacks || {}).map(item => {
+      const owned = (inv[item.id] || 0) > 0;
+      return card({
+        emoji: item.emoji, name: item.name, desc: 'Sound pack',
+        price: owned ? null : item.price,
+        action: owned
+          ? (p.soundPack === item.id ? equippedBtn() : `<button class="btn btn-ghost" data-equip-sound="${item.id}">Equip</button>`)
+          : buyBtn(item.id, item.price, p.coins),
+      });
+    }).join('');
   } else if (category === 'powerups') {
     html += Object.values(cat.powerups).map(item => {
       const held = inv[item.id] || 0;
@@ -147,6 +161,10 @@ function render() {
   grid.querySelectorAll('[data-equip-celebration]').forEach(b => b.addEventListener('click', () => equip({ celebration: b.dataset.equipCelebration || null })));
   grid.querySelectorAll('[data-equip-theme]').forEach(b => b.addEventListener('click', () => equip({ tableTheme: b.dataset.equipTheme || null })));
   grid.querySelectorAll('[data-equip-back]').forEach(b => b.addEventListener('click', () => equip({ cardBack: b.dataset.equipBack || null })));
+  grid.querySelectorAll('[data-equip-sound]').forEach(b => b.addEventListener('click', async () => {
+    await equip({ soundPack: b.dataset.equipSound || null });
+    sfx.win(); // preview the new voice right away
+  }));
 }
 
 async function equip(body) {

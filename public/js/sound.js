@@ -1,6 +1,11 @@
 // Synth sound effects via WebAudio — no audio files needed.
 let ctx = null;
 let muted = localStorage.getItem('hb_muted') === '1';
+let pack = { type: null, pitch: 1 }; // equipped sound pack re-voices everything
+
+export function setPack(p) {
+  pack = p && p.pitch ? { type: p.type || null, pitch: p.pitch } : { type: null, pitch: 1 };
+}
 
 function ac() {
   if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -22,9 +27,10 @@ function tone({ freq = 440, dur = 0.12, type = 'sine', vol = 0.18, slide = 0, de
     const t0 = a.currentTime + delay;
     const osc = a.createOscillator();
     const gain = a.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, t0);
-    if (slide) osc.frequency.exponentialRampToValueAtTime(Math.max(30, freq + slide), t0 + dur);
+    osc.type = pack.type || type;
+    const f = freq * pack.pitch;
+    osc.frequency.setValueAtTime(f, t0);
+    if (slide) osc.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide * pack.pitch), t0 + dur);
     gain.gain.setValueAtTime(vol, t0);
     gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
     osc.connect(gain).connect(a.destination);

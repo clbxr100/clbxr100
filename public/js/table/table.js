@@ -1,10 +1,11 @@
 // Table screen controller: renders game state, routes events to effects.
 import * as socket from '../socket.js';
+import { api } from '../api.js';
 import { $, store, fmt, toast, modal, closeModal, showScreen } from '../app.js';
 import { sfx } from '../sound.js';
 import { FX, rectOf } from '../effects/fx.js';
 import { celebrate, powerUpFx, playTheme } from '../effects/celebrations.js';
-import { initActions, renderActions, clearPick } from './actions.js';
+import { initActions, renderActions, clearPick, pickJustConsumed } from './actions.js';
 import { initChat, resetChat } from './chat.js';
 import { esc } from '../screens/lobby.js';
 
@@ -13,6 +14,7 @@ let prevCommunity = 0;
 let prevHandNumber = 0;
 let peeked = new Map();   // userId -> cards revealed to me this hand
 let timerTick = null;
+let spectating = false;
 
 export function getState() { return state; }
 export function seatEl(userId) { return document.querySelector(`.seat[data-uid="${CSS.escape(userId)}"]`); }
@@ -64,6 +66,23 @@ export function initTable() {
   socket.on('table:sitOut', ({ sittingOut, auto }) => {
     if (auto) toast('⏸️ Sitting out after 2 missed turns — tap ▶️ when you\'re back', 'error');
     else toast(sittingOut ? '⏸️ Sitting out — the table plays on without you' : '▶️ Back in the game!');
+  });
+
+  // Tap a seat (outside targeting mode) → player profile card.
+  $('#felt').addEventListener('click', (e) => {
+    const seat = e.target.closest('.seat');
+    if (!seat || seat.classList.contains('targetable') || pickJustConsumed()) return;
+    const player = state?.players?.find(p => String(p.userId) === seat.dataset.uid);
+    if (player) openProfile(player);
+  });
+
+  // Emote wheel: quick reactions that pop over your seat.
+  $('#btn-emote').addEventListener('click', () => $('#emote-wheel').classList.toggle('hidden'));
+  document.querySelectorAll('#emote-wheel button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      socket.send('chat:emoji', { emoji: btn.dataset.emote });
+      $('#emote-wheel').classList.add('hidden');
+    });
   });
 
   socket.on('game:handStarted', () => {
@@ -194,20 +213,23 @@ export function initTable() {
   });
 }
 
-export function enterTable(st) {
+export function enterTable(st, asSpectator = false) {
   resetChat();
   peeked.clear();
   clearXray();
   prevCommunity = 0;
   prevHandNumber = 0;
+  spectating = asSpectator;
   applyState(st);
   startTimerLoop();
 }
 
 export function leaveTableView() {
   state = null;
+  spectating = false;
   stopTimerLoop();
   clearPick();
+  $('#emote-wheel').classList.add('hidden');
   document.querySelectorAll('.seat, .seat-bet').forEach(el => el.remove());
 }
 
@@ -268,6 +290,8 @@ function render() {
   const sitBtn = $('#btn-sitout');
   sitBtn.style.display = me && !state.tournament ? '' : 'none';
   sitBtn.textContent = me && me.sittingOut ? '▶️' : '⏸️';
+  $('#btn-emote').style.display = me || spectating ? '' : 'none';
+  if (spectating) $('#table-phase').textContent = '👁️ watching';
 
   if (state.phase !== 'handEnded' && state.phase !== 'waiting') $('#table-banner').innerHTML = '';
   if (state.phase === 'waiting') {
@@ -483,6 +507,68 @@ function showXray(card) {
 function clearXray() {
   if (xrayEl) xrayEl.remove();
   xrayEl = null;
+}
+
+// ---------------- profile popup / seat emotes ----------------
+
+async function openProfile(player) {
+  if (player.isBot) {
+    modal(`<div class="profile-pop">
+      <span class="pp-avatar">${player.avatar}</span>
+      <h3>🤖 ${esc(player.name)}</h3>
+      <p class="row-sub">House bot · plays for the love of the game</p>
+      <div class="stats-grid"><div class="stat"><b>${fmt(player.chips)}</b><span>Stack</span></div></div>
+      <button class="btn btn-ghost" id="pp-close">Close</button>
+    </div>`).querySelector('#pp-close').addEventListener('click', closeModal);
+    return;
+  }
+  const m = modal(`<div class="profile-pop"><span class="spin">🂠</span></div>`);
+  try {
+    const p = await api.get(`/api/player?id=${player.userId}`);
+    const isMe = String(p.userId) === String(store.profile?.userId);
+    m.innerHTML = `<div class="profile-pop">
+      <span class="pp-avatar">${p.avatar}</span>
+      <h3>${esc(p.username)} ${p.badge || ''} ${p.isGuest ? '<span class="badge">guest</span>' : ''}</h3>
+      <p class="row-sub">${p.rank.emoji} ${p.rank.title} · Level ${p.level} · 🏅 ${p.achievements}</p>
+      <div class="stats-grid">
+        <div class="stat"><b>${fmt(player.chips)}</b><span>Stack</span></div>
+        <div class="stat"><b>${p.stats.hands_won}</b><span>Hands won</span></div>
+        <div class="stat"><b>${fmt(p.stats.biggest_pot)}</b><span>Best pot</span></div>
+        <div class="stat"><b>${p.stats.best_streak}</b><span>Best streak</span></div>
+        <div class="stat"><b>${p.stats.tournaments_won}</b><span>Tourneys</span></div>
+        <div class="stat"><b>${p.stats.hands_played}</b><span>Played</span></div>
+      </div>
+      <div class="modal-row">
+        ${!isMe && !p.friend && !p.isGuest ? `<button class="btn btn-primary" id="pp-add">👥 Add friend</button>` : ''}
+        ${p.friend ? '<span class="badge green" style="align-self:center">👥 Friends</span>' : ''}
+        <button class="btn btn-ghost" id="pp-close">Close</button>
+      </div>
+    </div>`;
+    m.querySelector('#pp-close').addEventListener('click', closeModal);
+    const addBtn = m.querySelector('#pp-add');
+    if (addBtn) addBtn.addEventListener('click', async () => {
+      try {
+        await api.post('/api/friends/request', { username: p.username });
+        toast(`Request sent to ${p.username} 👋`);
+        closeModal();
+      } catch (err) { toast(err.message, 'error'); }
+    });
+  } catch (err) {
+    m.innerHTML = `<div class="profile-pop"><p>${esc(err.message)}</p><button class="btn btn-ghost" id="pp-close">Close</button></div>`;
+    m.querySelector('#pp-close').addEventListener('click', closeModal);
+  }
+}
+
+// Emoji reaction bubble above the sender's seat (called from chat).
+export function showSeatEmote(userId, emoji) {
+  const el = seatEl(userId);
+  if (!el) return;
+  el.querySelector('.emote-bubble')?.remove();
+  const bubble = document.createElement('div');
+  bubble.className = 'emote-bubble';
+  bubble.textContent = emoji;
+  el.appendChild(bubble);
+  setTimeout(() => bubble.remove(), 2600);
 }
 
 function ordinal(n) {

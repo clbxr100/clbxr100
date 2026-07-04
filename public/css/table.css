@@ -301,6 +301,35 @@
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
 }
 
+/* emote wheel + seat bubbles */
+.emote-btn { bottom: calc(146px + var(--safe-bottom)); }
+.emote-wheel {
+  position: absolute; right: 8px; bottom: calc(200px + var(--safe-bottom));
+  z-index: 20; display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px;
+  background: rgba(13, 20, 38, 0.96); border: 1px solid var(--line);
+  border-radius: 16px; padding: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.14s ease-out;
+}
+.emote-wheel button {
+  width: 48px; height: 48px; font-size: 25px; border: none; border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06); cursor: pointer;
+}
+.emote-wheel button:active { transform: scale(0.9); }
+.emote-bubble {
+  position: absolute; top: -34px; left: 50%; transform: translateX(-50%);
+  font-size: 26px; z-index: 6;
+  background: #fff; border-radius: 14px 14px 14px 3px; padding: 2px 7px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+  animation: bannerPop 0.3s cubic-bezier(0.2, 2, 0.4, 1);
+}
+
+/* profile popup */
+.profile-pop { display: flex; flex-direction: column; gap: 10px; text-align: center; align-items: center; }
+.profile-pop .pp-avatar { font-size: 52px; }
+.profile-pop .stats-grid { width: 100%; }
+.profile-pop .modal-row { width: 100%; }
+
 /* floating emoji reactions */
 .float-emoji {
   position: fixed; z-index: 65; font-size: 38px; pointer-events: none;

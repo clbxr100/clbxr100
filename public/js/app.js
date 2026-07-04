@@ -1,7 +1,7 @@
 // App shell: store, screen router, toasts, modals, global socket wiring.
 import { api, getToken, setToken } from './api.js';
 import * as socket from './socket.js';
-import { sfx, isMuted, toggleMute } from './sound.js';
+import { sfx, isMuted, toggleMute, setPack } from './sound.js';
 import { initAuth } from './screens/auth.js';
 import { initDashboard, renderDashboard } from './screens/dashboard.js';
 import { initLobby } from './screens/lobby.js';
@@ -75,6 +75,7 @@ export function setProfile(profile) {
 
 // Personal table theme: swap the felt CSS variables everywhere.
 function applyTheme() {
+  setPack(store.profile?.soundPack ? store.catalog?.soundpacks?.[store.profile.soundPack] : null);
   const theme = store.profile?.tableTheme && store.catalog?.themes?.[store.profile.tableTheme];
   const root = document.documentElement.style;
   if (theme) {
@@ -223,9 +224,10 @@ async function boot() {
     socket.disconnect();
     showScreen('auth');
   });
-  socket.on('table:joined', ({ state }) => {
-    enterTable(state);
+  socket.on('table:joined', ({ state, spectating }) => {
+    enterTable(state, !!spectating);
     showScreen('table');
+    if (spectating) toast('👁️ Watching — tap Leave to stop');
   });
   socket.on('table:left', () => {
     leaveTableView();

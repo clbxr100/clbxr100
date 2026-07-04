@@ -141,6 +141,7 @@
   background: #ef4444; animation: liveBlink 1.2s infinite;
 }
 .live-text { color: #86efac; }
+.join-col { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
 @keyframes liveBlink { 50% { opacity: 0.3; } }
 
 .empty-felt {
