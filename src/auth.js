@@ -73,6 +73,7 @@ function publicProfile(user) {
     nextLevelXp: xpForLevel(levelFromXp(user.xp) + 1),
     levelStartXp: xpForLevel(levelFromXp(user.xp)),
     rank: titleForLevel(levelFromXp(user.xp)),
+    isAdmin: isAdmin(user),
     dailyStreak: user.daily_streak,
     lastDailyBonusAt: user.last_daily_bonus_at,
     lastBailoutAt: user.last_bailout_at,
@@ -122,6 +123,19 @@ function createUserRow({ username, passwordHash, isGuest }) {
   return getUser(id);
 }
 
+// Admins are named in config (survives ephemeral-disk wipes). Extend or
+// override with ADMIN_USERS="name1,name2".
+const ADMIN_USERS = new Set(
+  (process.env.ADMIN_USERS || 'breezyonda1')
+    .split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+);
+
+// Guests can't be admins — the suffixed guest names can't collide with
+// real usernames anyway, but belt and braces.
+function isAdmin(user) {
+  return !!user && !user.is_guest && ADMIN_USERS.has(String(user.username).toLowerCase());
+}
+
 const USERNAME_RE = /^[A-Za-z0-9_]{3,16}$/;
 
 function signup(username, password) {
@@ -161,4 +175,4 @@ function tokenFor(user) {
   return signToken({ userId: user.id, username: user.username, isGuest: !!user.is_guest });
 }
 
-module.exports = { signToken, verifyToken, signup, login, guest, tokenFor, getUser, getOrRestoreUser, publicProfile };
+module.exports = { signToken, verifyToken, signup, login, guest, tokenFor, getUser, getOrRestoreUser, publicProfile, isAdmin };

@@ -137,6 +137,12 @@ async function boot() {
     sfx.bigWin();
     FX.play('confettiBurst', { x: innerWidth / 2, y: innerHeight * 0.25, count: 40 });
   });
+  socket.on('gift:received', ({ from, amount }) => {
+    toast(`🎁 ${from} gifted you ${fmt(amount)} chips!`, 'gold');
+    sfx.bigWin();
+    FX.play('coinRain', { duration: 2200 });
+    refreshProfile();
+  });
   socket.on('xp:levelUp', ({ level }) => {
     toast(`⭐ LEVEL UP! You reached level ${level}`, 'gold');
     sfx.bigWin();

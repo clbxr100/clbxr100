@@ -1,6 +1,7 @@
 // REST endpoints for profile, shop, daily bonus. Mounted by server.js.
 const { db, transaction } = require('./db');
-const { verifyToken, signup, login, guest, tokenFor, getUser, getOrRestoreUser, publicProfile } = require('./auth');
+const { verifyToken, signup, login, guest, tokenFor, getUser, getOrRestoreUser, publicProfile, isAdmin } = require('./auth');
+const presence = require('./presence');
 const economy = require('./economy');
 const catalog = require('./catalog');
 
@@ -92,6 +93,21 @@ function mount(route) {
     } catch (err) {
       sendJson(err.status || 500, { error: err.message });
     }
+  }));
+
+  // Admin: gift chips to any player by username.
+  route('POST', '/api/admin/gift', authed((req, res, { sendJson }) => {
+    if (!isAdmin(req.user)) return sendJson(403, { error: 'Admins only' });
+    const amount = Math.floor(Number(req.body.amount));
+    if (!Number.isFinite(amount) || amount < 1 || amount > 1000000) {
+      return sendJson(400, { error: 'Amount must be 1 – 1,000,000' });
+    }
+    const target = db.prepare('SELECT * FROM users WHERE username = ?').get(String(req.body.username || '').trim());
+    if (!target) return sendJson(404, { error: 'No player with that username' });
+    const coins = economy.adjustCoins(target.id, amount, 'admin_gift', req.user.username);
+    presence.sendTo(target.id, 'gift:received', { from: req.user.username, amount, coins });
+    presence.sendTo(target.id, 'profile:update', { coinsDelta: amount });
+    sendJson(200, { ok: true, username: target.username, amount, theirCoins: coins });
   }));
 
   route('GET', '/api/quests', authed((req, res, { sendJson }) => {

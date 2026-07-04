@@ -10,6 +10,23 @@ export function initDashboard() {
   $('#nav-leaderboard').addEventListener('click', () => showScreen('leaderboard'));
   onShow('dashboard', () => { loadQuests(); loadAchievements(); });
 
+  $('#gift-send').addEventListener('click', async () => {
+    const username = $('#gift-name').value.trim();
+    const amount = Number($('#gift-amount').value);
+    if (!username || !amount) return;
+    $('#gift-send').disabled = true;
+    try {
+      const res = await api.post('/api/admin/gift', { username, amount });
+      toast(`👑 Gifted ${fmt(res.amount)} chips to ${res.username}!`, 'gold');
+      sfx.coin();
+      $('#gift-name').value = '';
+      $('#gift-amount').value = '';
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+    $('#gift-send').disabled = false;
+  });
+
   $('#btn-daily').addEventListener('click', async () => {
     try {
       const res = await api.post('/api/daily-bonus');
@@ -41,6 +58,8 @@ export function renderDashboard() {
   $('#dash-avatar').innerHTML = p.avatar + (p.pet && store.catalog?.pets[p.pet] ? `<span class="seat-pet">${store.catalog.pets[p.pet].emoji}</span>` : '');
   $('#dash-name').textContent = p.username + (p.isGuest ? ' (guest)' : '');
   $('#dash-coins').textContent = fmt(p.coins);
+
+  $('#admin-card').classList.toggle('hidden', !p.isAdmin);
 
   // XP / rank card
   if (p.rank) {
