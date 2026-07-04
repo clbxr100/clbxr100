@@ -80,7 +80,13 @@
 .badge.red { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
 
 /* ============ SHOP ============ */
-.shop-tabs { margin: 10px 14px 0; }
+.shop-tabs {
+  margin: 10px 14px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.shop-tabs::-webkit-scrollbar { display: none; }
+.shop-tabs .tab { flex: 1 0 auto; white-space: nowrap; padding: 10px 12px; }
 .shop-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   align-content: start;

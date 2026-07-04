@@ -49,9 +49,12 @@ function createApp({ staticDir }) {
           return sendJson(res, 404, { error: 'Not found' });
         }
         const ext = path.extname(filePath).toLowerCase();
+        // App code must never be stale after a deploy — the game is tiny,
+        // so html/js/css are always revalidated; only media gets cached.
+        const fresh = ['.html', '.js', '.mjs', '.css'].includes(ext);
         res.writeHead(200, {
           'Content-Type': MIME[ext] || 'application/octet-stream',
-          'Cache-Control': ext === '.html' ? 'no-cache' : 'max-age=300',
+          'Cache-Control': fresh ? 'no-cache' : 'max-age=86400',
         });
         res.end(data);
       });
