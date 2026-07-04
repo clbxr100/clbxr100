@@ -21,9 +21,12 @@ const PORT = process.env.PORT || 3000;
   const LobbyManager = require('./src/lobby');
   const { db } = require('./src/db');
 
+  const vault = require('./src/vault');
+
   const { server, route } = createApp({ staticDir: path.join(__dirname, 'public') });
   shop.mount(route);
   social.mount(route);
+  vault.mount(route);
 
   const lobby = new LobbyManager();
   presence.register(lobby);

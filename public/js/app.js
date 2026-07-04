@@ -68,6 +68,7 @@ export function setProfile(profile) {
   store.profile = profile;
   renderDashboard();
   applyTheme();
+  if (profile) saveVaultSoon(); // keep the device snapshot fresh
   const shopCoins = $('#shop-coins');
   if (shopCoins && profile) shopCoins.textContent = fmt(profile.coins);
 }
@@ -92,6 +93,40 @@ export async function refreshProfile() {
     const { profile } = await api.get('/api/me');
     setProfile(profile);
   } catch { /* token likely expired; auth flow handles it */ }
+}
+
+// ---------- device vault (survives server database wipes) ----------
+let vaultTimer = null;
+function saveVaultSoon() {
+  if (vaultTimer) return;
+  vaultTimer = setTimeout(async () => {
+    vaultTimer = null;
+    try {
+      const vault = await api.get('/api/vault');
+      localStorage.setItem('hb_vault', JSON.stringify(vault));
+    } catch { /* offline or signed out */ }
+  }, 4000);
+}
+
+// If the server lost its data (fresh account) but this device has a vault
+// for the same username, put everything back — silently.
+async function maybeRestoreVault(profile) {
+  const raw = localStorage.getItem('hb_vault');
+  if (!raw || !profile) return profile;
+  const hasProgress = (profile.stats?.hands_played || 0) > 0 || (profile.stats?.tournaments_played || 0) > 0;
+  if (hasProgress) return profile;
+  try {
+    const vault = JSON.parse(raw);
+    const data = JSON.parse(atob(vault.blob.replace(/-/g, '+').replace(/_/g, '/')));
+    if (data.username !== profile.username) return profile;
+    if ((data.stats?.hands_played || 0) === 0 && (data.coins || 0) <= profile.coins) return profile; // nothing worth restoring
+    const res = await api.post('/api/vault/restore', vault);
+    if (res.restored) {
+      toast('☁️ Progress restored from this device!', 'gold');
+      return res.profile;
+    }
+  } catch { /* not applicable (already has progress, other account, bad blob) */ }
+  return profile;
 }
 
 export function logout() {
@@ -214,8 +249,10 @@ async function boot() {
   const token = getToken();
   if (token) {
     try {
-      const { profile } = await api.get('/api/me');
+      let { profile } = await api.get('/api/me');
+      profile = await maybeRestoreVault(profile);
       setProfile(profile);
+      saveVaultSoon();
       socket.connect();
       showScreen('dashboard');
       return;
@@ -226,9 +263,11 @@ async function boot() {
   showScreen('auth');
 }
 
-export function signedIn(token, profile) {
+export async function signedIn(token, profile) {
   setToken(token);
+  profile = await maybeRestoreVault(profile);
   setProfile(profile);
+  saveVaultSoon();
   socket.connect();
   showScreen('dashboard');
 }

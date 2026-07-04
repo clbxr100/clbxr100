@@ -124,9 +124,17 @@ function setMeta(key, value) {
   db.prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, value);
 }
 
-// Stable dev secret so restarts don't invalidate sessions; JWT_SECRET wins.
+// Stable signing secret, best source first:
+// 1. JWT_SECRET env var
+// 2. derived from the host's stable service id (Render sets
+//    RENDER_SERVICE_ID automatically) — survives disk wipes with zero setup
+// 3. generated and stored in the local database (fine for local play)
 function getJwtSecret() {
   if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+  const serviceId = process.env.RENDER_SERVICE_ID || process.env.FLY_APP_NAME || process.env.RAILWAY_SERVICE_ID;
+  if (serviceId) {
+    return crypto.createHash('sha256').update(`holdem-blitz|${serviceId}|v1`).digest('hex');
+  }
   let secret = getMeta('jwt_secret');
   if (!secret) {
     secret = crypto.randomBytes(32).toString('hex');
