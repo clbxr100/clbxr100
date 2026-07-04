@@ -153,7 +153,19 @@ function signup(username, password) {
 
 function login(username, password) {
   const user = db.prepare('SELECT * FROM users WHERE username = ? AND is_guest = 0').get(username || '');
-  if (!user || !checkPassword(password || '', user.password_hash)) {
+  if (!user) return { error: 'Wrong username or password' };
+  // Accounts recreated after a database wipe have no password hash (it
+  // died with the old database). The first login claims the account and
+  // sets a fresh password.
+  if (user.password_hash === null) {
+    if (typeof password !== 'string' || password.length < 4) {
+      return { error: 'Password must be at least 4 characters' };
+    }
+    db.prepare('UPDATE users SET password_hash = ?, last_login_at = ? WHERE id = ?')
+      .run(hashPassword(password), Date.now(), user.id);
+    return { user: getUser(user.id) };
+  }
+  if (!checkPassword(password || '', user.password_hash)) {
     return { error: 'Wrong username or password' };
   }
   db.prepare('UPDATE users SET last_login_at = ? WHERE id = ?').run(Date.now(), user.id);
