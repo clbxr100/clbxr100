@@ -23,6 +23,18 @@ export function initShop() {
   });
 }
 
+function dealInfo(itemId) {
+  const deals = store.catalog?.deals;
+  if (!deals || !deals.items.includes(itemId)) return null;
+  return deals.discount;
+}
+
+// Price shown (and charged) honors today's deals.
+function priceOf(item) {
+  const d = dealInfo(item.id);
+  return d ? Math.floor(item.price * (1 - d)) : item.price;
+}
+
 function render() {
   const grid = $('#shop-grid');
   const cat = store.catalog;
@@ -32,6 +44,26 @@ function render() {
   const inv = p.inventory || {};
 
   let html = '';
+
+  // Daily deals strip (shows on every tab; hides items already owned)
+  const deals = cat.deals;
+  if (deals && deals.items.length) {
+    const dealCards = deals.items
+      .map(id => {
+        const item = findCatalogItem(cat, id);
+        if (!item || (inv[id] || 0) > 0) return '';
+        return `<div class="shop-item deal-item">
+          <span class="deal-tag">-${Math.round(deals.discount * 100)}%</span>
+          <span class="item-emoji">${item.emoji}</span>
+          <span class="item-name">${esc(item.name)}</span>
+          <span class="item-price"><s>${fmt(item.price)}</s> 🪙 ${fmt(priceOf(item))}</span>
+          ${buyBtn(item.id, priceOf(item), p.coins)}
+        </div>`;
+      }).join('');
+    if (dealCards) {
+      html += `<div class="deals-strip"><h3>🔥 Today's Deals</h3><div class="deals-row">${dealCards}</div></div>`;
+    }
+  }
   if (category === 'avatars') {
     html += cat.avatars.free.map(a => card({
       emoji: a, name: 'Starter', desc: 'Free for everyone',
@@ -41,10 +73,10 @@ function render() {
       const owned = (inv[item.id] || 0) > 0;
       return card({
         emoji: item.emoji, name: item.name, desc: 'Premium avatar',
-        price: owned ? null : item.price,
+        price: owned ? null : priceOf(item),
         action: owned
           ? (p.avatar === item.emoji ? equippedBtn() : `<button class="btn btn-ghost" data-equip-avatar="${item.emoji}">Equip</button>`)
-          : buyBtn(item.id, item.price, p.coins),
+          : buyBtn(item.id, priceOf(item), p.coins),
       });
     }).join('');
   } else if (category === 'pets') {
@@ -56,19 +88,19 @@ function render() {
       const owned = (inv[item.id] || 0) > 0;
       return card({
         emoji: item.emoji, name: item.name, desc: 'Sits at the table with you',
-        price: owned ? null : item.price,
+        price: owned ? null : priceOf(item),
         action: owned
           ? (p.pet === item.id ? equippedBtn() : `<button class="btn btn-ghost" data-equip-pet="${item.id}">Equip</button>`)
-          : buyBtn(item.id, item.price, p.coins),
+          : buyBtn(item.id, priceOf(item), p.coins),
       });
     }).join('');
   } else if (category === 'throwables') {
     html += Object.values(cat.throwables).map(item => card({
       emoji: item.emoji, name: item.name,
       desc: item.kind === 'gift' ? 'A friendly gift' : item.kind === 'burst' ? 'Party in a bag' : 'Splat! Right in the face',
-      price: item.price, priceNote: `pack of ${item.pack}`,
+      price: priceOf(item), priceNote: `pack of ${item.pack}`,
       owned: inv[item.id] ? `${inv[item.id]} owned` : '',
-      action: buyBtn(item.id, item.price, p.coins),
+      action: buyBtn(item.id, priceOf(item), p.coins),
     })).join('');
   } else if (category === 'celebrations') {
     html += card({
@@ -79,10 +111,10 @@ function render() {
       const owned = (inv[item.id] || 0) > 0;
       return card({
         emoji: item.emoji, name: item.name, desc: item.desc,
-        price: owned ? null : item.price,
+        price: owned ? null : priceOf(item),
         action: owned
           ? (p.celebration === item.id ? equippedBtn() : `<button class="btn btn-ghost" data-equip-celebration="${item.id}">Equip</button>`)
-          : buyBtn(item.id, item.price, p.coins),
+          : buyBtn(item.id, priceOf(item), p.coins),
       });
     }).join('');
   } else if (category === 'tablefx') {
@@ -94,10 +126,10 @@ function render() {
       const owned = (inv[item.id] || 0) > 0;
       return card({
         emoji: item.emoji, name: item.name, desc: 'Table felt theme',
-        price: owned ? null : item.price,
+        price: owned ? null : priceOf(item),
         action: owned
           ? (p.tableTheme === item.id ? equippedBtn() : `<button class="btn btn-ghost" data-equip-theme="${item.id}">Equip</button>`)
-          : buyBtn(item.id, item.price, p.coins),
+          : buyBtn(item.id, priceOf(item), p.coins),
       });
     }).join('');
     html += card({
@@ -108,10 +140,10 @@ function render() {
       const owned = (inv[item.id] || 0) > 0;
       return card({
         emoji: item.emoji, name: item.name, desc: 'Card back design',
-        price: owned ? null : item.price,
+        price: owned ? null : priceOf(item),
         action: owned
           ? (p.cardBack === item.id ? equippedBtn() : `<button class="btn btn-ghost" data-equip-back="${item.id}">Equip</button>`)
-          : buyBtn(item.id, item.price, p.coins),
+          : buyBtn(item.id, priceOf(item), p.coins),
       });
     }).join('');
     html += card({
@@ -122,10 +154,10 @@ function render() {
       const owned = (inv[item.id] || 0) > 0;
       return card({
         emoji: item.emoji, name: item.name, desc: 'Sound pack',
-        price: owned ? null : item.price,
+        price: owned ? null : priceOf(item),
         action: owned
           ? (p.soundPack === item.id ? equippedBtn() : `<button class="btn btn-ghost" data-equip-sound="${item.id}">Equip</button>`)
-          : buyBtn(item.id, item.price, p.coins),
+          : buyBtn(item.id, priceOf(item), p.coins),
       });
     }).join('');
   } else if (category === 'powerups') {
@@ -137,7 +169,7 @@ function render() {
         price: item.buyable ? item.price : null,
         priceNote: item.buyable ? `max ${item.maxHeld}` : 'free deal only',
         owned: held ? `${held} owned` : '',
-        action: item.buyable ? buyBtn(item.id, item.price, p.coins, held >= item.maxHeld) : '<span class="rarity legendary">Lucky deal only</span>',
+        action: item.buyable ? buyBtn(item.id, priceOf(item), p.coins, held >= item.maxHeld) : '<span class="rarity legendary">Lucky deal only</span>',
       });
     }).join('');
   }
@@ -192,6 +224,11 @@ function card({ emoji, name, desc, price, priceNote, owned, rarity, action }) {
 
 function buyBtn(id, price, coins, maxed = false) {
   return `<button class="btn btn-primary" data-buy="${id}" ${coins < price || maxed ? 'disabled' : ''}>${maxed ? 'Max held' : 'Buy'}</button>`;
+}
+
+function findCatalogItem(cat, id) {
+  return cat.avatars.premium[id] || cat.pets[id] || cat.celebrations?.[id]
+    || cat.themes?.[id] || cat.cardbacks?.[id] || cat.soundpacks?.[id] || cat.throwables[id] || null;
 }
 
 function equippedBtn() {

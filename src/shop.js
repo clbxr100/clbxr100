@@ -22,6 +22,8 @@ const buyItem = transaction((user, itemId, qty) => {
   const item = catalog.findItem(itemId);
   if (!item) throw Object.assign(new Error('No such item'), { status: 400 });
   if (item.buyable === false) throw Object.assign(new Error('That item cannot be bought'), { status: 400 });
+  // Daily deals discount applies automatically.
+  item.price = catalog.dealPrice(itemId, new Date().toISOString().slice(0, 10));
   const count = Math.max(1, Math.min(10, Math.floor(qty || 1)));
 
   let units, cost;
@@ -84,6 +86,7 @@ function mount(route) {
       xp: catalog.XP,
       stakes: catalog.STAKES,
       economy: catalog.ECONOMY,
+      deals: catalog.dealsForDay(new Date().toISOString().slice(0, 10)),
     });
   });
 

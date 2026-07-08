@@ -30,6 +30,7 @@ class PokerGame {
     this.handNumber = 0;
     this.powerUps = {}; // userId -> per-hand power-up state
     this.pendingBlindSkips = new Set(); // survives between hands
+    this.pendingLucky = new Set();      // Lucky Charm: next free roll is rare+
     this.lastHandResult = null;
     this.rand = opts.rand || Math.random;
   }
@@ -109,8 +110,9 @@ class PokerGame {
       p.allIn = false;
       p.folded = p.chips <= 0 || p.sittingOut; // no chips or sitting out → skip the hand
       if (!p.folded) {
+        const lucky = this.pendingLucky.delete(p.userId);
         this.powerUps[p.userId] = {
-          free: opts.noPowerUps ? null : rollFreePowerUp(this.rand),
+          free: opts.noPowerUps ? null : rollFreePowerUp(this.rand, lucky),
           usedThisHand: false,
           shield: false,
           doubleDown: false,
@@ -622,6 +624,37 @@ class PokerGame {
         result.publicEvent.amount = stolen;
         break;
       }
+
+      case 'pu_mulligan': {
+        const old = [...actor.cards];
+        actor.cards = [this.deck.shift(), this.deck.shift()];
+        consume();
+        result.privateResults.push({ userId, payload: { type, swappedOut: old, cards: actor.cards } });
+        break;
+      }
+
+      case 'pu_taxman': {
+        consume();
+        // Multi-target offense: any live opponent's shield guards everyone.
+        const guard = this.livePlayers().find(p => p !== actor && this.powerUps[p.userId] && this.powerUps[p.userId].shield);
+        if (guard && shieldBlocks(guard.userId)) break;
+        let collected = 0;
+        for (const p of this.livePlayers()) {
+          if (p === actor) continue;
+          const tax = Math.min(this.bigBlind, p.chips);
+          p.chips -= tax;
+          collected += tax;
+          if (p.chips === 0 && p.bet > 0) p.allIn = true; // taxed to felt mid-hand
+        }
+        actor.chips += collected;
+        result.publicEvent.amount = collected;
+        break;
+      }
+
+      case 'pu_lucky':
+        this.pendingLucky.add(userId);
+        consume();
+        break;
 
       case 'pu_freeze': {
         if (target.allIn) return { success: false, message: 'They are all-in — nothing to freeze' };

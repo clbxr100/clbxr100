@@ -312,6 +312,28 @@
 }
 .season-head.last-podium { border-color: rgba(251, 191, 36, 0.35); }
 
+/* ============ DAILY DEALS ============ */
+.deals-strip {
+  grid-column: 1 / -1;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(239, 68, 68, 0.08));
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: var(--radius); padding: 12px;
+}
+.deals-strip h3 {
+  font-size: 12px; font-weight: 900; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--gold); margin-bottom: 10px;
+}
+.deals-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.deal-item { position: relative; overflow: hidden; }
+.deal-tag {
+  position: absolute; top: 8px; right: 8px;
+  background: linear-gradient(180deg, #f87171, #dc2626);
+  color: #fff; font-size: 10px; font-weight: 900;
+  padding: 2px 7px; border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.5);
+}
+.deal-item .item-price s { color: var(--muted); font-size: 11px; margin-right: 4px; }
+
 /* ============ LEADERBOARD ============ */
 .lb-row { padding: 10px 14px; gap: 10px; }
 .lb-rank { font-size: 16px; font-weight: 900; min-width: 30px; text-align: center; }

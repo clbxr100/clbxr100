@@ -252,6 +252,12 @@ function maybeUsePowerUp(view, freePowerUp, personality) {
     case 'pu_blindfold':
       return view.phase !== 'river' && target && Math.random() < 0.6
         ? { type: 'pu_blindfold', targetUserId: target.userId } : null;
+    case 'pu_mulligan':
+      return view.phase === 'preflop' && chenScore(view.holeCards) < 5 ? { type: 'pu_mulligan' } : null;
+    case 'pu_taxman':
+      return Math.random() < 0.5 ? { type: 'pu_taxman' } : null;
+    case 'pu_lucky':
+      return Math.random() < 0.6 ? { type: 'pu_lucky' } : null;
     default:
       return null;
   }

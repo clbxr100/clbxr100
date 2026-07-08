@@ -310,6 +310,7 @@ class Table {
       if (action === 'allin') this.botChat(userId, 'allin');
       else if (action === 'fold' && facing >= this.game.bigBlind * 6) this.botChat(userId, 'fold_grumble');
     }
+    if (actor && !actor.isBot && action === 'allin') economy.bumpQuest(userId, 'q_allin1');
     if (result.handEnded || !this.game.inHand()) {
       this.onHandEnd();
     } else {
@@ -381,6 +382,7 @@ class Table {
     if (!economy.consumeItem(userId, itemId)) return { error: 'You have none left — visit the shop!' };
     economy.addStats(userId, { items_thrown: 1 });
     economy.bumpQuest(userId, 'q_throw1');
+    if (THROWABLES[itemId] && THROWABLES[itemId].kind === 'gift') economy.bumpQuest(userId, 'q_gift1');
     this.io.toTable(this.id, 'throw:item', { fromUserId: userId, targetUserId, itemId });
     if (target.isBot) {
       const def = THROWABLES[itemId];
@@ -438,6 +440,7 @@ class Table {
       if (p.isBot || p.cards.length === 0) continue;
       economy.addStats(p.userId, { hands_played: 1 });
       economy.bumpQuest(p.userId, 'q_play10');
+      economy.bumpQuest(p.userId, 'q_hands25');
       economy.addXp(p.userId, XP.rewards.handPlayed);
     }
     // Win streaks: winners heat up, everyone else dealt in cools off.
@@ -478,6 +481,8 @@ class Table {
       if (!p || p.isBot) continue;
       economy.addStats(userId, { hands_won: 1 });
       economy.bumpQuest(userId, 'q_win3');
+      economy.bumpQuest(userId, 'q_win5');
+      if (won >= 1000) economy.bumpQuest(userId, 'q_bigpot1k');
       economy.addXp(userId, XP.rewards.handWon);
       if (result.winningHand && result.winningHand.rank >= 8 && result.winningHand.userIds.map(String).includes(String(userId))) {
         economy.addXp(userId, XP.rewards.bigHand);

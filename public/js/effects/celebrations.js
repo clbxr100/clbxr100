@@ -117,6 +117,24 @@ const THEMES = {
     });
     sfx.gift();
   },
+  celebration_frost(pot) {
+    FX.play('emojiRain', { emojis: ['❄️', '🌨️', '❄️'], duration: 2800, size: [14, 26] });
+    FX.play('burst', {
+      x: pot.cx, y: pot.cy, count: 40, speed: 280, g: 120,
+      life: [0.8, 1.6], colors: ['#bfdbfe', '#e0f2fe', '#60a5fa', '#fff'], size: [4, 9],
+    });
+    sfx.whoosh();
+    setTimeout(sfx.bigWin, 400);
+  },
+  celebration_royalty(pot, winner) {
+    FX.play('emojiRain', { emojis: ['👑', '💛', '🏆'], duration: 2600, size: [16, 30] });
+    FX.play('emojiPop', { x: winner.cx, y: winner.cy - 40, emoji: '👑', size: 60 });
+    FX.play('burst', {
+      x: pot.cx, y: pot.cy, count: 50, speed: 320, g: 260,
+      life: [0.7, 1.5], colors: ['#fde68a', '#fbbf24', '#fff'], size: [5, 10],
+    });
+    sfx.bigWin();
+  },
   celebration_dragon(pot) {
     FX.play('emojiPop', { x: pot.cx, y: pot.cy - 70, emoji: '🐉', size: 84 });
     FX.play('burst', {
@@ -159,6 +177,26 @@ export function powerUpFx(event, seatEls) {
     case 'pu_insurance':
       sfx.powerup();
       FX.play('emojiPop', { ...xy(seat(event.userId)), emoji: '🛟', size: 40 });
+      break;
+    case 'pu_taxman': {
+      if (event.blocked) { FX.play('bubblePop', seat(event.blockedBy)); break; }
+      sfx.coin();
+      const to = seat(event.userId);
+      document.querySelectorAll('.seat').forEach(el => {
+        if (el.dataset.uid !== String(event.userId)) {
+          FX.play('chipsFly', { from: rectOf(el), to, amount: 30, color: '#a3e635' });
+        }
+      });
+      FX.play('emojiPop', { ...xy(to), emoji: '💼', size: 40 });
+      break;
+    }
+    case 'pu_mulligan':
+      sfx.powerup();
+      FX.play('emojiPop', { ...xy(seat(event.userId)), emoji: '♻️', size: 40 });
+      break;
+    case 'pu_lucky':
+      sfx.gift();
+      FX.play('burst', { ...xy(seat(event.userId)), count: 14, speed: 130, g: -40, life: [0.7, 1.3], emojis: ['🍀', '✨'], size: [12, 20] });
       break;
     case 'pu_forcefold':
       if (event.blocked) FX.play('bubblePop', seat(event.blockedBy));

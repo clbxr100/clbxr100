@@ -312,6 +312,41 @@ section('power-up: freeze, insurance, blindfold');
   assert(bf.success && g4.powerUps.p1.blindfoldedFrom === 0, 'blindfold marks target from current street');
 }
 
+section('power-up: mulligan, taxman, lucky charm');
+{
+  const g = newGame([1000, 1000, 1000]);
+  g.startHand({ noPowerUps: true });
+  const base = { usedThisHand: false, shield: false, doubleDown: false, frozen: false, insurance: false, blindfoldedFrom: null };
+  g.powerUps.p0 = { ...base, free: 'pu_mulligan' };
+  g.powerUps.p1 = { ...base, free: 'pu_taxman' };
+  g.powerUps.p2 = { ...base, free: 'pu_lucky' };
+
+  const oldCards = [...g.getPlayer('p0').cards];
+  const mg = g.usePowerUp('p0', 'pu_mulligan', { source: 'free' });
+  const newCards = g.getPlayer('p0').cards;
+  assert(mg.success && mg.privateResults.length === 1, 'mulligan private result');
+  assert(newCards[0] !== oldCards[0] && newCards[1] !== oldCards[1], 'both cards replaced');
+  g.playerAction('p0', 'call');
+
+  const before = totalChips(g);
+  const chipsP1 = g.getPlayer('p1').chips;
+  const tx = g.usePowerUp('p1', 'pu_taxman', { source: 'free' });
+  assert(tx.success && tx.publicEvent.amount === 40, `taxman collects 1BB from 2 live opponents (${tx.publicEvent.amount})`);
+  assert(g.getPlayer('p1').chips === chipsP1 + 40, 'taxman stack grew');
+  assert(totalChips(g) === before, 'taxman conserves chips');
+  g.playerAction('p1', 'call');
+
+  const lk = g.usePowerUp('p2', 'pu_lucky', { source: 'free' });
+  assert(lk.success && g.pendingLucky.has('p2'), 'lucky charm armed for next hand');
+  while (g.inHand()) g.playerAction(g.currentPlayer().userId, 'fold');
+  assert(g.phase === 'handEnded', 'hand over');
+  g.startHand();
+  const freePu = g.powerUps.p2.free;
+  const { POWERUPS } = require('../src/catalog');
+  assert(POWERUPS[freePu].rarity !== 'common', `lucky roll is rare+ (got ${freePu})`);
+  assert(g.pendingLucky.size === 0, 'lucky consumed');
+}
+
 section('regression: steal reduces what the winner collects');
 {
   const g = newGame([5000, 5000]);

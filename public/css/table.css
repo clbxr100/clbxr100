@@ -146,6 +146,21 @@
   border-color: rgba(134, 239, 172, 0.28);
 }
 .pcard.back.cb_dragon::after { content: '🐉'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 1em; }
+.pcard.back.cb_ice {
+  background: linear-gradient(160deg, #bfe8f7 0%, #60a5fa 55%, #1d4ed8 100%);
+  border-color: rgba(224, 242, 254, 0.4);
+}
+.pcard.back.cb_ice::after { content: '❄️'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 1em; }
+.pcard.back.cb_royal {
+  background: linear-gradient(160deg, #7c3aed 0%, #4c1d95 60%, #2e1065 100%);
+  border-color: rgba(253, 230, 138, 0.35);
+}
+.pcard.back.cb_royal::after { content: '👑'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 1em; }
+.pcard.back.cb_skull {
+  background: repeating-linear-gradient(45deg, #18181b, #18181b 4px, #09090b 4px, #09090b 8px);
+  border-color: rgba(113, 113, 122, 0.35);
+}
+.pcard.back.cb_skull::after { content: '💀'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 1em; }
 @keyframes dealIn { from { transform: translateY(-28px) rotate(-6deg) scale(0.85); opacity: 0; } }
 
 .hero-cards {
