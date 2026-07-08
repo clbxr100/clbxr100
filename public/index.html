@@ -185,6 +185,7 @@
       </div>
       <div class="table-top-actions">
         <button class="btn btn-ghost btn-sm" id="btn-invite">📣</button>
+        <button class="btn btn-ghost btn-sm" id="btn-history">🕐</button>
         <button class="btn btn-ghost btn-sm" id="btn-sitout">⏸️</button>
         <span class="phase-badge" id="table-phase">waiting</span>
       </div>
@@ -241,6 +242,15 @@
         <h3>⚡ Power-ups <small>(one per hand, on your turn)</small></h3>
         <div id="pu-list"></div>
         <button class="btn btn-ghost sheet-close" data-close="pu-sheet">Close</button>
+      </div>
+    </div>
+
+    <!-- hand history sheet -->
+    <div class="sheet hidden" id="history-sheet">
+      <div class="sheet-inner">
+        <h3>🕐 Hand history <small>(last 20)</small></h3>
+        <div id="history-list"></div>
+        <button class="btn btn-ghost sheet-close" data-close="history-sheet">Close</button>
       </div>
     </div>
 

@@ -12,12 +12,89 @@ const BOT_NAMES = [
   ['Pixel', '👾'], ['Blaze', '🔥'],
 ];
 
+// ---- table talk ------------------------------------------------------------
+// Each voice gets a handful of short lines per event. {item}/{amount} are
+// substituted from ctx. Keep everything under ~60 chars and family-friendly.
+
+const CHAT_LINES = {
+  cocky: {
+    win: ['Too easy. Ship it. 💰', 'Read you like a book.', 'Pay the man. 😎', 'Never a doubt.', "That's {amount} for the good guys."],
+    lose_big: ['Lucky river. Enjoy it.', "You'll give it back.", 'Card rack over there.', 'I still played it perfect.'],
+    allin: ['All the chips. Sweat it. 😎', "Let's gamble.", 'Time to end this.', 'Shipping the stack.'],
+    fold_grumble: ['Fine, take this one.', "I'll fold. This time.", 'Saving my bullets.'],
+    hit_by_item: ['A {item}? That all you got?', 'You missed. Mostly.', 'Careful, this face is money.'],
+    big_hand: ["Cute hand. I've had better.", 'Yawn. Seen bigger.', 'I fold those for fun.'],
+    greeting: ['Fresh money! Have a seat.', 'Welcome. Bring chips.', 'New blood. Love it. 😎'],
+  },
+  grumpy: {
+    win: ['About time.', 'Hmph. Took long enough.', 'That barely covers my losses.', 'Finally, the deck woke up.'],
+    lose_big: ['Rigged. Absolutely rigged.', 'Of course. The one-outer.', 'That river should be illegal.', 'Unbelievable. Every time.'],
+    allin: ['Whatever. All-in.', 'Might as well. All of it.', "In. Don't make it weird."],
+    fold_grumble: ["Take it. I don't care.", 'Nice raise. Bully.', 'Ugh. Fold. Happy now?', 'Fold. Rather not donate.'],
+    hit_by_item: ['Who threw that {item}?!', 'Hey! Cut it out!', 'Real mature. A {item}. 🙄'],
+    big_hand: ['Great. A monster. Rigged.', 'Of course THEY get it.', 'Never me. Not once. Ever.'],
+    greeting: ['Great. Another one.', "Hmph. Sit. Don't slowroll.", 'Welcome, I guess.'],
+  },
+  cheerful: {
+    win: ['Yay! Chips! 🎉', 'Aw, thanks for the pot!', 'Lucky me! Good hand, all!', 'Woo! Drinks on me! 🍹'],
+    lose_big: ['Aw shucks. Nice hand!', 'Well played! Ouch though 😅', 'You got me! Great river!'],
+    allin: ['Weeee, all-in! 🎢', 'All of them! Good luck us!', 'Going for it! Wish me luck!'],
+    fold_grumble: ['Too rich for me! 😅', 'You can have that one!', "I'll wait for a better spot!"],
+    hit_by_item: ['A {item}! For me? 🥰', 'Hehe, that tickled!', 'Ooh, a {item}! Thanks... I think?'],
+    big_hand: ['WOW what a hand! 🤩', 'Amazing! Frame that one!', 'Poker is SO fun!!'],
+    greeting: ['Hi hi! Welcome! 👋', 'Yay, a new friend!', 'Welcome! Good luck! 🍀'],
+  },
+  silent: {
+    win: ['...nice.', 'Mm.', '👍'],
+    lose_big: ['...', 'Mm.'],
+    allin: ['All-in.', '...'],
+    fold_grumble: ['Fold.', '...'],
+    hit_by_item: ['...why.', 'Hm. {item}.'],
+    big_hand: ['...big.', 'Whoa.'],
+    greeting: ['Hey.', '*nods*'],
+  },
+  nerd: {
+    win: ['EV positive. As computed. 📈', 'Pot odds said call. Correct.', 'Variance owed me that.', 'Solver approved. 🤓'],
+    lose_big: ['A 4% line. Naturally.', 'Variance is undefeated.', 'I had 82% on the turn...', "Small sample. I'm fine."],
+    allin: ['Shoving. Math checks out.', 'Fold equity + equity = in.', 'The range says jam. 🤓'],
+    fold_grumble: ['Priced out. Easy fold.', 'Insufficient pot odds. Fold.', 'Risk of ruin says no.'],
+    hit_by_item: ['A {item}? Statistically rude.', 'Projectile EV: negative.', 'That {item} had a bad angle.'],
+    big_hand: ['~0.17% hand. Neat.', "That's a 4-sigma event!", 'Recalculating outs... wow.'],
+    greeting: ['Welcome. Mind the variance.', 'Hello! GTO seat is taken.', 'A new data point joins.'],
+  },
+};
+
+const VOICE_NAMES = Object.keys(CHAT_LINES);
+
+// Per-event multiplier on chattiness: rare/personal events (getting pelted,
+// a human sitting down) get more of a reaction than routine folds.
+const CHAT_WEIGHTS = {
+  win: 1.0, lose_big: 0.9, allin: 1.1, fold_grumble: 0.5,
+  hit_by_item: 1.6, big_hand: 0.7, greeting: 1.8,
+};
+
+// Returns a chat line for the event, or null to stay quiet. The chattiness
+// roll lives here so tables stay quiet by default.
+function chatLine(event, ctx = {}, personality = {}) {
+  const voice = CHAT_LINES[personality.voice] ? personality.voice : 'cheerful';
+  const lines = CHAT_LINES[voice][event];
+  if (!lines || lines.length === 0) return null;
+  const chattiness = typeof personality.chattiness === 'number' ? personality.chattiness : 0.25;
+  const p = Math.min(0.85, chattiness * (CHAT_WEIGHTS[event] || 1));
+  if (Math.random() > p) return null;
+  const raw = lines[Math.floor(Math.random() * lines.length)];
+  return raw
+    .replaceAll('{item}', ctx.item != null ? String(ctx.item) : 'that')
+    .replaceAll('{amount}', ctx.amount != null ? String(ctx.amount) : 'the pot');
+}
+
 let botCounter = 0;
 
 function createBot(usedNames = new Set()) {
   botCounter++;
   const pick = BOT_NAMES.find(([n]) => !usedNames.has(n)) || BOT_NAMES[botCounter % BOT_NAMES.length];
   const name = usedNames.has(pick[0]) ? `${pick[0]}${botCounter}` : pick[0];
+  const voice = VOICE_NAMES[Math.floor(Math.random() * VOICE_NAMES.length)];
   return {
     userId: `bot_${botCounter}_${Math.floor(Math.random() * 1e6)}`,
     name,
@@ -27,6 +104,9 @@ function createBot(usedNames = new Set()) {
       aggression: 0.3 + Math.random() * 0.5,
       bluffRate: 0.05 + Math.random() * 0.06,
       jitter: 0.1,
+      // The strong-silent type barely speaks even when they do react.
+      chattiness: voice === 'silent' ? 0.15 : 0.15 + Math.random() * 0.35,
+      voice,
     },
   };
 }
@@ -177,4 +257,4 @@ function maybeUsePowerUp(view, freePowerUp, personality) {
   }
 }
 
-module.exports = { createBot, decideAction, maybeUsePowerUp, chenScore, winProbability };
+module.exports = { createBot, decideAction, maybeUsePowerUp, chatLine, chenScore, winProbability };

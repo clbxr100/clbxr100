@@ -4,7 +4,7 @@
 // toUser(userId, event, data) and callbacks.
 
 const PokerGame = require('../poker-game');
-const { POWERUPS, STAKES, ECONOMY, ACHIEVEMENTS, XP, levelFromXp } = require('./catalog');
+const { POWERUPS, STAKES, ECONOMY, ACHIEVEMENTS, THROWABLES, XP, levelFromXp } = require('./catalog');
 const economy = require('./economy');
 const social = require('./social');
 const bots = require('./bots');
@@ -37,6 +37,7 @@ class Table {
     this.turnDeadline = null;
     this.streaks = {};       // userId -> consecutive hand wins
     this.missedTurns = {};   // userId -> consecutive timeouts (auto sit-out at 2)
+    this.botChatState = {};  // userId -> { lastTs, lastHand } throttle for table talk
     this.spectators = new Set(); // userIds watching without a seat
   }
 
@@ -105,6 +106,12 @@ class Table {
     });
     this.game.getPlayer(user.id).level = levelFromXp(user.xp || 0);
     this.systemChat(`${user.username} sat down`);
+    // One of the bots may say hi to the newcomer.
+    const seatedBots = this.game.players.filter(p => p.isBot && !p.leftTable);
+    if (seatedBots.length > 0) {
+      const greeter = seatedBots[Math.floor(Math.random() * seatedBots.length)];
+      this.botChat(greeter.userId, 'greeting', { name: user.username });
+    }
     this.afterSeatingChange();
     return { ok: true };
   }
@@ -294,9 +301,15 @@ class Table {
   }
 
   applyAction(userId, action, amount) {
+    const actor = this.game.getPlayer(userId);
+    const facing = actor ? this.game.currentBet - actor.bet : 0; // before the action mutates bets
     const result = this.game.playerAction(userId, action, amount);
     if (!result.success) return { error: result.message };
     this.io.toTable(this.id, 'game:action', { userId, action, amount: amount || 0 });
+    if (actor && actor.isBot) {
+      if (action === 'allin') this.botChat(userId, 'allin');
+      else if (action === 'fold' && facing >= this.game.bigBlind * 6) this.botChat(userId, 'fold_grumble');
+    }
     if (result.handEnded || !this.game.inHand()) {
       this.onHandEnd();
     } else {
@@ -369,11 +382,45 @@ class Table {
     economy.addStats(userId, { items_thrown: 1 });
     economy.bumpQuest(userId, 'q_throw1');
     this.io.toTable(this.id, 'throw:item', { fromUserId: userId, targetUserId, itemId });
+    if (target.isBot) {
+      const def = THROWABLES[itemId];
+      this.botChat(targetUserId, 'hit_by_item', { item: def ? def.emoji : 'that' });
+    }
     return { ok: true };
   }
 
   systemChat(text) {
     this.io.toTable(this.id, 'chat:message', { system: true, text, ts: Date.now() });
+  }
+
+  // Bot table talk. Rolls the bot's chattiness (inside bots.chatLine), applies
+  // a per-bot throttle so nobody spams, and sends the line after a human-ish
+  // pause as a regular player chat message.
+  botChat(userId, event, ctx = {}) {
+    if (this.destroyed || !this.hasHumans()) return;
+    const player = this.game.getPlayer(userId);
+    if (!player || !player.isBot || player.leftTable) return;
+    const personality = (this.botPersonalities || {})[userId];
+    if (!personality) return;
+
+    // At most ~1 line per bot per couple of hands (greetings only skip the
+    // hand gate — the table may be brand new).
+    const st = this.botChatState[userId] || { lastTs: 0, lastHand: -10 };
+    const now = Date.now();
+    if (event !== 'greeting' && this.game.handNumber - st.lastHand < 2) return;
+    if (now - st.lastTs < 20000) return;
+
+    const text = bots.chatLine(event, ctx, personality);
+    if (!text) return;
+    this.botChatState[userId] = { lastTs: now, lastHand: this.game.handNumber };
+
+    const delay = 600 + Math.random() * 1900;
+    this.setTimer(`chat_${userId}`, delay, () => {
+      if (this.destroyed || !this.hasHumans()) return;
+      this.io.toTable(this.id, 'chat:message', {
+        userId, username: player.name, avatar: player.avatar, text, ts: Date.now(),
+      });
+    });
   }
 
   // ---- hand end ------------------------------------------------------------
@@ -415,6 +462,16 @@ class Table {
     const recapTotal = Object.values(result.totalWonBy || {}).reduce((s, x) => s + x, 0);
     const how = result.byFold ? 'everyone folded' : (result.winningHand ? result.winningHand.name : '');
     this.systemChat(`🏁 Hand #${this.game.handNumber}: ${recapNames} won ${recapTotal} (${how})`);
+
+    // Bot table talk about how the hand went (throttled inside botChat).
+    const bigPot = recapTotal >= this.game.bigBlind * 15;
+    for (const p of this.game.players) {
+      if (!p.isBot || p.leftTable || p.cards.length === 0) continue;
+      const won = (result.totalWonBy || {})[p.userId];
+      if (won) this.botChat(p.userId, 'win', { amount: won });
+      else if (bigPot && !p.folded && !result.byFold) this.botChat(p.userId, 'lose_big', { amount: recapTotal });
+      else if (winnerRank >= 8) this.botChat(p.userId, 'big_hand', {});
+    }
 
     for (const [userId, won] of Object.entries(result.totalWonBy || {})) {
       const p = this.game.getPlayer(userId);

@@ -10,6 +10,7 @@ import { initTournaments } from './screens/tournaments.js';
 import { initLeaderboard } from './screens/leaderboard.js';
 import { initFriends } from './screens/friends.js';
 import { initTable, enterTable, leaveTableView } from './table/table.js';
+import { initHistory } from './table/history.js';
 import { FX } from './effects/fx.js';
 
 export const store = {
@@ -167,6 +168,7 @@ async function boot() {
   initLeaderboard();
   initFriends();
   initTable();
+  initHistory();
 
   socket.on('achievement:unlocked', ({ name, badge, desc }) => {
     toast(`🏅 Achievement unlocked: ${badge} ${name} — ${desc}`, 'gold');
