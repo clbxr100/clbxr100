@@ -438,5 +438,33 @@ section('fuzz: 400 random hands, invariants hold');
   assert(violations === 0, `fuzz clean (${violations} violations)`);
 }
 
+// ------------------------------------------------------- all-in equities
+section('all-in runout equities');
+{
+  const pop = [
+    c('A\u2660'), c('A\u2665'),   // p0: aces
+    c('7\u2666'), c('2\u2663'),   // p1: junk
+    c('A\u2666'), c('K\u2666'), c('4\u2663'), c('9\u2660'), c('10\u2666'),
+  ];
+  const g = newGame([500, 500]);
+  g.startHand({ deck: riggedDeck(pop), noPowerUps: true });
+  assert(g.playerAction(g.currentPlayer().userId, 'allin').success, 'first player shoves');
+  assert(g.playerAction(g.currentPlayer().userId, 'call').success, 'second calls');
+  assert(g.phase === 'handEnded', 'runout completed');
+  const eq = g.lastHandResult.equities;
+  assert(eq && typeof eq.p0 === 'number' && typeof eq.p1 === 'number', 'equities attached to result');
+  const sum = eq.p0 + eq.p1;
+  assert(sum >= 98 && sum <= 102, `equities sum ~100 (${sum})`);
+  assert(eq.p0 > eq.p1, 'aces are the preflop favorite');
+  // No equities on a non-all-in hand (river showdown after normal streets)
+  const g2 = newGame([500, 500]);
+  g2.startHand({ noPowerUps: true });
+  while (g2.inHand()) {
+    const r = g2.playerAction(g2.currentPlayer().userId, g2.currentPlayer().bet < g2.currentBet ? 'call' : 'check');
+    if (!r.success) break;
+  }
+  assert(g2.lastHandResult && g2.lastHandResult.equities === null, 'no equities without an early all-in');
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

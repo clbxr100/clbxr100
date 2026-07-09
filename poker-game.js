@@ -100,6 +100,7 @@ class PokerGame {
     this.minRaise = this.bigBlind;
     this.actedThisRound = new Set();
     this.lastHandResult = null;
+    this.runoutEquities = null;
     this.deck = opts.deck ? opts.deck.slice() : this.shuffledDeck();
 
     this.powerUps = {};
@@ -351,8 +352,41 @@ class PokerGame {
   }
 
   runOutBoard() {
+    const live = this.livePlayers();
+    if (live.length >= 2 && this.communityCards.length < 5) {
+      this.runoutEquities = this.computeRunoutEquities(live);
+    }
     while (this.communityCards.length < 5) this.communityCards.push(this.deck.pop());
     this.showdown();
+  }
+
+  // Monte Carlo win % per live player, computed as the all-in runout
+  // starts. Samples boards from the real remaining deck, so card removal
+  // is exact; ties split fractionally.
+  computeRunoutEquities(live) {
+    const need = 5 - this.communityCards.length;
+    const wins = {};
+    for (const p of live) wins[p.userId] = 0;
+    const TRIALS = 250;
+    for (let t = 0; t < TRIALS; t++) {
+      const deck = [...this.deck];
+      const board = [...this.communityCards];
+      for (let k = 0; k < need; k++) {
+        board.push(deck.splice(Math.floor(this.rand() * deck.length), 1)[0]);
+      }
+      let best = null;
+      let bestIds = [];
+      for (const p of live) {
+        const hand = this.evaluateHand(p.cards, board);
+        const cmp = best ? compareHands(hand, best) : 1;
+        if (cmp > 0) { best = hand; bestIds = [p.userId]; }
+        else if (cmp === 0) bestIds.push(p.userId);
+      }
+      for (const id of bestIds) wins[id] += 1 / bestIds.length;
+    }
+    const out = {};
+    for (const p of live) out[p.userId] = Math.round((wins[p.userId] / TRIALS) * 100);
+    return out;
   }
 
   // ---- Hand end -------------------------------------------------------
@@ -511,7 +545,9 @@ class PokerGame {
       winningHand: best ? { rank: best.hand.rank, name: best.hand.name, userIds: best.userIds } : null,
       totalWonBy,
       houseBonuses,
+      equities: this.runoutEquities || null,
     };
+    this.runoutEquities = null;
     return this.lastHandResult;
   }
 

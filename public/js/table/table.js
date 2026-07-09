@@ -7,6 +7,7 @@ import { FX, rectOf } from '../effects/fx.js';
 import { celebrate, powerUpFx, playTheme } from '../effects/celebrations.js';
 import { initActions, renderActions, clearPick, pickJustConsumed } from './actions.js';
 import { initChat, resetChat } from './chat.js';
+import { bestHand } from './handeval.js';
 import { esc } from '../screens/lobby.js';
 
 let state = null;
@@ -137,6 +138,7 @@ export function initTable() {
 
   socket.on('game:handEnded', ({ result, celebrations }) => {
     if (!state || !result) return;
+    pendingEquities = result.equities || null; // shown by the runout drama
     const winners = result.winningHand ? result.winningHand.userIds : Object.keys(result.totalWonBy || {});
     const total = Object.values(result.totalWonBy || {}).reduce((s, x) => s + x, 0);
     const fire = () => {
@@ -373,6 +375,27 @@ function renderHeroCards() {
   const cards = me && me.cards && !me.cards[0]?.hidden ? me.cards : [];
   reconcileCards(wrap, cards);
   wrap.style.opacity = me && me.folded ? '0.35' : '1';
+  renderHandStrength(me, cards);
+}
+
+// Live "what do I have" pill above the hero cards. Uses only the board
+// cards currently on the felt so it tracks the staggered runout reveal.
+function renderHandStrength(me, heroCards) {
+  const el = $('#hand-strength');
+  const inHand = me && !me.folded && heroCards.length === 2
+    && state.phase !== 'waiting';
+  if (!inHand) { el.classList.add('hidden'); return; }
+  const board = dramaBoardSlice(state.communityCards);
+  const hand = bestHand([...heroCards, ...board]);
+  if (!hand) { el.classList.add('hidden'); return; }
+  if (el.textContent !== hand.label) {
+    el.textContent = hand.label;
+    el.classList.remove('bump');
+    void el.offsetWidth; // restart the pop animation on change
+    el.classList.add('bump');
+  }
+  el.classList.toggle('strong', hand.rank >= 5);
+  el.classList.remove('hidden');
 }
 
 function renderSeats() {
@@ -706,6 +729,7 @@ let dramaTimers = [];  // pending reveal timeouts (cancel on new hand / leave)
 let dramaShown = -1;   // community cards allowed on screen (-1 = no drama)
 let dramaEndAt = 0;    // timestamp when the whole show wraps
 let dramaFlipSeq = 0;  // per-state seat flip stagger counter (reset in applyState)
+let pendingEquities = null; // all-in win % from the hand result, shown during the runout
 
 // While a runout plays, renderCommunity only gets the revealed prefix.
 function dramaBoardSlice(cards) {
@@ -715,10 +739,12 @@ function dramaBoardSlice(cards) {
 // All-in runout: keep `prefix` cards on the felt, reveal up to `total` one by
 // one with a deal sound + flip-in, under a suspense vignette.
 function beginRunoutDrama(prefix, total) {
+  const equities = pendingEquities; // cancelDrama clears it
   cancelDrama();
   dramaShown = prefix;
   const steps = total - prefix;
   $('#screen-table').classList.add('drama-suspense');
+  showEquities(equities);
   for (let k = 0; k < steps; k++) {
     dramaTimers.push(setTimeout(dramaRevealNext, DRAMA_LEAD_MS + k * DRAMA_STEP));
   }
@@ -737,12 +763,14 @@ function dramaRevealNext() {
     card.style.animationDelay = '0s';
     card.classList.add('card-runout');
   }
+  renderHeroCards(); // hand-strength pill tracks the reveal card by card
 }
 
 function dramaFinish() {
   dramaShown = -1; // keep dramaEndAt: the celebration hold still reads it
   $('#screen-table').classList.remove('drama-suspense');
-  if (state) renderCommunity(); // safety net: board fully caught up
+  if (state) { renderCommunity(); renderHeroCards(); } // safety net: fully caught up
+  setTimeout(clearEquities, 1800); // linger through the win moment
 }
 
 function cancelDrama() {
@@ -750,7 +778,26 @@ function cancelDrama() {
   dramaTimers = [];
   dramaShown = -1;
   dramaEndAt = 0;
+  pendingEquities = null;
+  clearEquities();
   document.getElementById('screen-table')?.classList.remove('drama-suspense');
+}
+
+// Win % pills on each all-in seat while the runout plays.
+function showEquities(equities) {
+  if (!equities) return;
+  for (const [uid, pct] of Object.entries(equities)) {
+    const el = seatEl(uid);
+    if (!el || el.querySelector('.seat-equity')) continue;
+    const pill = document.createElement('span');
+    pill.className = 'seat-equity' + (pct >= 50 ? ' fav' : '');
+    pill.textContent = `${pct}%`;
+    el.appendChild(pill);
+  }
+}
+
+function clearEquities() {
+  document.querySelectorAll('.seat-equity').forEach(el => el.remove());
 }
 
 // How much longer (past the base 250ms) the win moment should wait so it
