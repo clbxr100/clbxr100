@@ -1,6 +1,6 @@
-// Dashboard: coins, daily bonus, bailout, stats, navigation.
+// Dashboard: coins, daily bonus, daily spin, bailout, stats, navigation.
 import { api } from '../api.js';
-import { $, store, fmt, toast, setProfile, showScreen, onShow } from '../app.js';
+import { $, store, fmt, toast, setProfile, showScreen, onShow, ensureCatalog } from '../app.js';
 import { sfx } from '../sound.js';
 
 export function initDashboard() {
@@ -39,6 +39,8 @@ export function initDashboard() {
     renderDashboard();
   });
 
+  $('#btn-spin').addEventListener('click', openSpinWheel);
+
   $('#btn-bailout').addEventListener('click', async () => {
     try {
       const res = await api.post('/api/bailout');
@@ -55,7 +57,9 @@ export function initDashboard() {
 export function renderDashboard() {
   const p = store.profile;
   if (!p) return;
-  $('#dash-avatar').innerHTML = p.avatar + (p.pet && store.catalog?.pets[p.pet] ? `<span class="seat-pet">${store.catalog.pets[p.pet].emoji}</span>` : '');
+  const avEl = $('#dash-avatar');
+  avEl.innerHTML = p.avatar + (p.pet && store.catalog?.pets[p.pet] ? `<span class="seat-pet">${store.catalog.pets[p.pet].emoji}</span>` : '');
+  avEl.className = 'me-avatar' + (p.frame ? ` avframe ${p.frame}` : '');
   $('#dash-name').textContent = p.username + (p.isGuest ? ' (guest)' : '');
   $('#dash-coins').textContent = fmt(p.coins);
 
@@ -77,6 +81,12 @@ export function renderDashboard() {
   daily.textContent = dailyReady ? '🎁 Daily Bonus' : `🎁 Next bonus in ${hoursLeft(p.lastDailyBonusAt + 24 * 3600 * 1000)}`;
 
   $('#btn-bailout').classList.toggle('hidden', p.coins >= 1000);
+
+  const spinCooldown = store.catalog?.spin?.cooldownMs || 20 * 3600 * 1000;
+  const spinReady = !p.lastSpinAt || Date.now() - p.lastSpinAt >= spinCooldown;
+  const spinBtn = $('#btn-spin');
+  spinBtn.disabled = !spinReady;
+  spinBtn.textContent = spinReady ? '🎡 Daily Spin' : `🎡 Spin in ${hoursLeft(p.lastSpinAt + spinCooldown)}`;
 
   const s = p.stats || {};
   $('#stats-grid').innerHTML = [
@@ -163,4 +173,151 @@ function hoursLeft(ts) {
   const h = Math.floor(ms / 3600000);
   const m = Math.ceil((ms % 3600000) / 60000);
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+// ---------- Daily Spin prize wheel ----------
+
+const SEG_COLORS = ['#1e3a8a', '#0e7490', '#5b21b6', '#9d174d', '#166534', '#92400e', '#334155'];
+
+async function openSpinWheel() {
+  await ensureCatalog();
+  const spin = store.catalog?.spin;
+  if (!spin) { toast('Shop is still loading — try again', 'error'); return; }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'spin-overlay';
+  overlay.innerHTML = `
+    <div class="spin-modal">
+      <h2>🎡 Daily Spin</h2>
+      <div class="spin-wheel-wrap">
+        <div class="spin-pointer">▼</div>
+        <canvas class="spin-canvas" width="600" height="600"></canvas>
+      </div>
+      <div class="spin-prize hidden"></div>
+      <div class="spin-actions">
+        <button class="btn btn-gold spin-go">SPIN!</button>
+        <button class="btn btn-ghost spin-close">Close</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const canvas = overlay.querySelector('.spin-canvas');
+  const segs = spin.segments;
+  drawWheel(canvas, segs, 0);
+
+  let spinning = false;
+  const close = () => { if (!spinning) overlay.remove(); };
+  overlay.querySelector('.spin-close').addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+  overlay.querySelector('.spin-go').addEventListener('click', async (e) => {
+    const goBtn = e.currentTarget;
+    goBtn.disabled = true;
+    spinning = true;
+    let res;
+    try {
+      res = await api.post('/api/spin');
+    } catch (err) {
+      spinning = false;
+      goBtn.disabled = false;
+      toast(err.message, 'error');
+      if (err.message && err.message.includes('not ready')) overlay.remove();
+      renderDashboard();
+      return;
+    }
+    // Land the winning segment's center under the top pointer, +4 laps.
+    const segAngle = (Math.PI * 2) / segs.length;
+    const target = Math.PI * 2 * 4 + (Math.PI * 2 - (res.index + 0.5) * segAngle) - Math.PI / 2;
+    const start = performance.now();
+    const DURATION = 3800;
+    let lastTick = -1;
+    const frame = (now) => {
+      const t = Math.min(1, (now - start) / DURATION);
+      const eased = 1 - Math.pow(1 - t, 3.2); // long decelerating tail
+      const angle = target * eased;
+      drawWheel(canvas, segs, angle);
+      // click as each segment edge passes the pointer
+      const tick = Math.floor(angle / segAngle);
+      if (tick !== lastTick && t < 0.97) { lastTick = tick; sfx.chip(); }
+      if (t < 1) { requestAnimationFrame(frame); return; }
+      spinning = false;
+      showPrize(overlay, res);
+    };
+    requestAnimationFrame(frame);
+  });
+}
+
+function showPrize(overlay, res) {
+  setProfile(res.profile);
+  const seg = res.segment;
+  const bits = [];
+  if (res.coins) bits.push(`🪙 ${fmt(res.coins)} coins`);
+  if (res.item) {
+    const item = findAnyItem(res.item.itemId);
+    bits.push(`${item?.emoji || '🎁'} ${item?.name || res.item.itemId}${res.item.qty > 1 ? ` ×${res.item.qty}` : ''}`);
+  }
+  const prizeEl = overlay.querySelector('.spin-prize');
+  prizeEl.innerHTML = `<span class="spin-prize-emoji">${seg.emoji}</span> You won <b>${bits.join(' + ') || seg.label}</b>!`;
+  prizeEl.classList.remove('hidden');
+  if (seg.id === 'jackpot') { sfx.bigWin(); prizeEl.classList.add('jackpot'); }
+  else sfx.coin();
+  const go = overlay.querySelector('.spin-go');
+  go.textContent = 'See you tomorrow!';
+  renderDashboard();
+}
+
+function findAnyItem(id) {
+  const c = store.catalog;
+  if (!c) return null;
+  return c.frames?.[id] || c.powerups?.[id] || c.throwables?.[id] || c.pets?.[id]
+    || c.avatars?.premium?.[id] || c.celebrations?.[id] || null;
+}
+
+function drawWheel(canvas, segs, rotation) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, cx = W / 2, cy = W / 2, r = W / 2 - 10;
+  ctx.clearRect(0, 0, W, W);
+  const segAngle = (Math.PI * 2) / segs.length;
+  for (let i = 0; i < segs.length; i++) {
+    const a0 = rotation + i * segAngle;
+    const jackpot = segs[i].id === 'jackpot';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, a0, a0 + segAngle);
+    ctx.closePath();
+    ctx.fillStyle = jackpot ? '#b8860b' : SEG_COLORS[i % SEG_COLORS.length];
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,215,130,0.55)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    // label along the segment's bisector
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(a0 + segAngle / 2);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+    ctx.font = '44px system-ui';
+    ctx.fillText(segs[i].emoji, r * 0.62, 16);
+    ctx.font = `bold ${jackpot ? 26 : 24}px system-ui`;
+    ctx.fillStyle = jackpot ? '#ffe9a8' : 'rgba(255,255,255,0.92)';
+    ctx.fillText(segs[i].label, r * 0.62, 52);
+    ctx.restore();
+  }
+  // hub
+  ctx.beginPath();
+  ctx.arc(cx, cy, 46, 0, Math.PI * 2);
+  ctx.fillStyle = '#101a30';
+  ctx.fill();
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 4;
+  ctx.stroke();
+  ctx.font = '40px system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillText('🎰', cx, cy + 14);
+  // outer rim
+  ctx.beginPath();
+  ctx.arc(cx, cy, r + 4, 0, Math.PI * 2);
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 6;
+  ctx.stroke();
 }

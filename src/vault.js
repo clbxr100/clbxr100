@@ -44,6 +44,7 @@ function buildVault(userId) {
     tableTheme: user.table_theme,
     cardBack: user.card_back,
     soundPack: user.sound_pack,
+    frame: user.frame,
     dailyStreak: user.daily_streak,
     stats,
     inventory,
@@ -66,12 +67,12 @@ function accountIsFresh(user) {
 const applyVault = transaction((user, data) => {
   db.prepare(`
     UPDATE users SET coins = ?, xp = ?, avatar = ?, pet = ?, badge = ?,
-      celebration = ?, table_theme = ?, card_back = ?, sound_pack = ?, daily_streak = ?
+      celebration = ?, table_theme = ?, card_back = ?, sound_pack = ?, frame = ?, daily_streak = ?
     WHERE id = ?
   `).run(
     data.coins, data.xp || 0, data.avatar || '🤠', data.pet || null, data.badge || null,
     data.celebration || null, data.tableTheme || null, data.cardBack || null,
-    data.soundPack || null, data.dailyStreak || 0, user.id
+    data.soundPack || null, data.frame || null, data.dailyStreak || 0, user.id
   );
   const statCols = ['hands_played', 'hands_won', 'biggest_pot', 'best_hand_rank',
     'tournaments_played', 'tournaments_won', 'powerups_used', 'items_thrown', 'best_streak'];

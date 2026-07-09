@@ -281,6 +281,44 @@ const CARDBACKS = {
   cb_neon: { id: 'cb_neon', name: 'Neon Dream', emoji: '🌈', price: 0, buyable: false, exclusive: 'Battle Pass' },
 };
 
+// Avatar frames: animated rings around your avatar, visible to everyone
+// at the table and on your dashboard. `fx` names the CSS animation class.
+const FRAMES = {
+  frame_bronze: { id: 'frame_bronze', name: 'Bronze Ring', emoji: '🥉', price: 900 },
+  frame_gold: { id: 'frame_gold', name: 'Gold Luxe', emoji: '🥇', price: 2200 },
+  frame_neon: { id: 'frame_neon', name: 'Neon Pulse', emoji: '💠', price: 3200 },
+  frame_fire: { id: 'frame_fire', name: 'Ring of Fire', emoji: '🔥', price: 4200 },
+  frame_electric: { id: 'frame_electric', name: 'High Voltage', emoji: '⚡', price: 5200 },
+  frame_rainbow: { id: 'frame_rainbow', name: 'Prismatic', emoji: '🌈', price: 0, buyable: false, exclusive: 'Daily Spin' },
+};
+
+// Daily Spin: one free spin per day; the server picks a weighted segment
+// and the client wheel animates to it. Jackpot carries the exclusive
+// Prismatic frame the first time it hits.
+const SPIN = {
+  cooldownMs: 20 * 60 * 60 * 1000, // 20h so "daily" never drifts later each day
+  segments: [
+    { id: 'coins_100', label: '100', emoji: '🪙', weight: 26, coins: 100 },
+    { id: 'coins_250', label: '250', emoji: '🪙', weight: 20, coins: 250 },
+    { id: 'coins_500', label: '500', emoji: '💰', weight: 14, coins: 500 },
+    { id: 'pu_swap1', label: 'Swap ×1', emoji: '🔄', weight: 14, item: 'pu_swap', qty: 1 },
+    { id: 'cake3', label: 'Cake ×3', emoji: '🎂', weight: 10, item: 'throw_cake', qty: 3 },
+    { id: 'coins_1000', label: '1,000', emoji: '💎', weight: 8, coins: 1000 },
+    { id: 'peek1', label: 'Peek ×1', emoji: '👁️', weight: 5, item: 'pu_peek', qty: 1 },
+    { id: 'jackpot', label: 'JACKPOT', emoji: '🌈', weight: 3, coins: 2500, item: 'frame_rainbow', qty: 1 },
+  ],
+};
+
+function rollSpin(rand = Math.random) {
+  const total = SPIN.segments.reduce((s, seg) => s + seg.weight, 0);
+  let r = rand() * total;
+  for (let i = 0; i < SPIN.segments.length; i++) {
+    r -= SPIN.segments[i].weight;
+    if (r <= 0) return i;
+  }
+  return 0;
+}
+
 // XP: cumulative threshold for level L is 60*(L-1)^2.
 const XP = {
   perLevel: 60,
@@ -357,6 +395,7 @@ function dealsForDay(day) {
     ...Object.values(AVATARS.premium), ...Object.values(PETS),
     ...Object.values(CELEBRATIONS), ...Object.values(THEMES),
     ...Object.values(CARDBACKS), ...Object.values(SOUNDPACKS),
+    ...Object.values(FRAMES),
   ].filter(i => i.buyable !== false).map(i => i.id);
   let h = 7;
   for (const ch of day) h = (h * 33 + ch.charCodeAt(0)) >>> 0;
@@ -386,13 +425,14 @@ function findItem(itemId) {
   if (THEMES[itemId]) return { ...THEMES[itemId], category: 'theme' };
   if (CARDBACKS[itemId]) return { ...CARDBACKS[itemId], category: 'cardback' };
   if (SOUNDPACKS[itemId]) return { ...SOUNDPACKS[itemId], category: 'soundpack' };
+  if (FRAMES[itemId]) return { ...FRAMES[itemId], category: 'frame' };
   return null;
 }
 
 module.exports = {
   POWERUPS, AVATARS, PETS, THROWABLES, CELEBRATIONS, STAKES, ECONOMY, TOURNAMENT,
-  QUESTS, ACHIEVEMENTS, SEASON, THEMES, CARDBACKS, SOUNDPACKS, XP,
-  questsForDay, rollFreePowerUp, findItem, levelFromXp, xpForLevel, titleForLevel,
+  QUESTS, ACHIEVEMENTS, SEASON, THEMES, CARDBACKS, SOUNDPACKS, FRAMES, SPIN, XP,
+  questsForDay, rollFreePowerUp, rollSpin, findItem, levelFromXp, xpForLevel, titleForLevel,
   dealsForDay, dealPrice,
   BATTLEPASS, bpSeason, bpSeasonEndsAt, bpTierXp,
 };

@@ -386,3 +386,98 @@
 .lb-avatar { font-size: 24px; }
 .lb-value { font-weight: 900; color: var(--gold); font-size: 13.5px; text-shadow: 0 1px 6px rgba(251, 191, 36, 0.25); }
 .lb-me { border-color: rgba(34, 197, 94, 0.5); background: linear-gradient(180deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.05)); }
+
+/* ===== DAILY SPIN + AVATAR FRAMES ===== */
+.spin-overlay {
+  position: fixed; inset: 0; z-index: 400;
+  background: rgba(4, 8, 18, 0.78); backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center; padding: 18px;
+  animation: fadeIn 0.25s ease;
+}
+.spin-modal {
+  width: min(420px, 100%); text-align: center;
+  background: linear-gradient(180deg, var(--card2, #16213e), #0d1526);
+  border: 1px solid rgba(251, 191, 36, 0.35); border-radius: 22px;
+  padding: 20px 18px; box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
+  animation: spinPopIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes spinPopIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.spin-modal h2 { margin: 0 0 12px; font-size: 20px; color: var(--gold, #fbbf24); letter-spacing: 0.5px; }
+.spin-wheel-wrap { position: relative; width: min(300px, 78vw); margin: 0 auto; }
+.spin-canvas { width: 100%; height: auto; display: block; filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.5)); }
+.spin-pointer {
+  position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+  font-size: 30px; color: var(--gold, #fbbf24); z-index: 2;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7), 0 0 14px rgba(251, 191, 36, 0.6);
+}
+.spin-prize {
+  margin: 14px auto 2px; padding: 10px 14px; border-radius: 14px; font-size: 15px;
+  background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.4);
+  animation: spinPopIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.spin-prize.jackpot {
+  background: linear-gradient(90deg, rgba(251,191,36,0.25), rgba(236,72,153,0.25), rgba(139,92,246,0.25));
+  border-color: var(--gold, #fbbf24);
+  animation: spinPopIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), jackpotGlow 1.2s ease-in-out infinite alternate;
+}
+@keyframes jackpotGlow { from { box-shadow: 0 0 8px rgba(251,191,36,0.35); } to { box-shadow: 0 0 26px rgba(251,191,36,0.75); } }
+.spin-prize-emoji { font-size: 22px; margin-right: 6px; }
+.spin-actions { display: flex; gap: 10px; justify-content: center; margin-top: 14px; }
+.spin-actions .spin-go { min-width: 150px; font-size: 16px; }
+
+/* Avatar frames: animated rings. Applied to .me-avatar / .frame-preview /
+   table seat avatars via `avframe frame_x` classes. */
+.avframe, .frame-preview { position: relative; border-radius: 50%; }
+.frame-preview {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 52px; height: 52px; font-size: 30px;
+}
+.avframe::after, .frame-preview::after {
+  content: ''; position: absolute; inset: -4px; border-radius: 50%;
+  pointer-events: none;
+}
+.frame_bronze::after { border: 3px solid #cd7f32; box-shadow: 0 0 8px rgba(205, 127, 50, 0.55), inset 0 0 6px rgba(205, 127, 50, 0.35); }
+.frame_gold::after {
+  border: 3px solid #fbbf24;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.65), inset 0 0 8px rgba(251, 191, 36, 0.35);
+  animation: frameGoldPulse 2.2s ease-in-out infinite;
+}
+@keyframes frameGoldPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(251, 191, 36, 0.45), inset 0 0 6px rgba(251, 191, 36, 0.25); }
+  50% { box-shadow: 0 0 18px rgba(251, 191, 36, 0.85), inset 0 0 10px rgba(251, 191, 36, 0.45); }
+}
+.frame_neon::after {
+  border: 3px solid #22d3ee;
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.7), inset 0 0 8px rgba(34, 211, 238, 0.4);
+  animation: frameNeonPulse 1.6s ease-in-out infinite;
+}
+@keyframes frameNeonPulse {
+  0%, 100% { border-color: #22d3ee; box-shadow: 0 0 8px rgba(34, 211, 238, 0.5); }
+  50% { border-color: #a5f3fc; box-shadow: 0 0 20px rgba(34, 211, 238, 0.95); }
+}
+.frame_fire::after {
+  border: 3px solid #f97316;
+  box-shadow: 0 0 14px rgba(249, 115, 22, 0.75), inset 0 0 8px rgba(249, 115, 22, 0.45);
+  animation: frameFlicker 0.9s ease-in-out infinite;
+}
+.frame_fire::before {
+  content: '🔥'; position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+  font-size: 13px; z-index: 1; animation: frameFlicker 0.7s ease-in-out infinite alternate;
+}
+@keyframes frameFlicker {
+  0%, 100% { filter: brightness(1); } 45% { filter: brightness(1.35); } 70% { filter: brightness(0.85); }
+}
+.frame_electric::after {
+  border: 3px dashed #facc15;
+  box-shadow: 0 0 14px rgba(250, 204, 21, 0.75), inset 0 0 8px rgba(250, 204, 21, 0.4);
+  animation: frameSpinRing 3.2s linear infinite;
+}
+@keyframes frameSpinRing { to { transform: rotate(360deg); } }
+.frame_rainbow::after {
+  border: 3px solid transparent;
+  background: conic-gradient(#f87171, #fbbf24, #4ade80, #22d3ee, #a78bfa, #f472b6, #f87171) border-box;
+  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: frameSpinRing 2.4s linear infinite;
+  box-shadow: 0 0 16px rgba(167, 139, 250, 0.6);
+}

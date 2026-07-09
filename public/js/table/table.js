@@ -88,6 +88,7 @@ export function initTable() {
   socket.on('game:handStarted', () => {
     peeked.clear();
     clearXray();
+    cancelDrama();
     sfx.deal();
   });
 
@@ -138,7 +139,7 @@ export function initTable() {
     if (!state || !result) return;
     const winners = result.winningHand ? result.winningHand.userIds : Object.keys(result.totalWonBy || {});
     const total = Object.values(result.totalWonBy || {}).reduce((s, x) => s + x, 0);
-    setTimeout(() => {
+    const fire = () => {
       const winnerEls = winners.map(seatEl).filter(Boolean);
       winners.forEach(id => petReact(id, 'pet-celebrate', 1600));
       winnerEls.forEach(el => seatWinnerMoment(el));
@@ -157,6 +158,14 @@ export function initTable() {
       if (result.houseBonuses && result.houseBonuses[myId()]) {
         toast(`💥 Double Down! House pays +${fmt(result.houseBonuses[myId()])}`, 'gold');
       }
+    };
+    // SHOWDOWN DRAMA: this event lands just before the hand-end state, so
+    // check after the usual 250ms whether a runout/flip show started — if so,
+    // hold the celebration until the drama wraps (capped, see dramaHoldMs).
+    setTimeout(() => {
+      const hold = dramaHoldMs();
+      if (hold > 0) setTimeout(fire, hold);
+      else fire();
     }, 250);
   });
 
@@ -221,6 +230,7 @@ export function enterTable(st, asSpectator = false) {
   resetChat();
   peeked.clear();
   clearXray();
+  cancelDrama();
   chipsShown.clear();
   potShown = 0;
   prevCommunity = 0;
@@ -234,6 +244,7 @@ export function leaveTableView() {
   state = null;
   spectating = false;
   stopTimerLoop();
+  cancelDrama();
   clearPick();
   $('#emote-wheel').classList.add('hidden');
   document.querySelectorAll('.seat, .seat-bet').forEach(el => el.remove());
@@ -254,7 +265,14 @@ function applyState(st) {
     });
     sfx.chip();
   }
-  if (newHand) { peeked.clear(); clearXray(); }
+  if (newHand) { peeked.clear(); clearXray(); cancelDrama(); }
+  // SHOWDOWN DRAMA: 2+ board cards landing in one state while the hand is
+  // already over = all-in runout → stagger the reveal instead.
+  if (state && !newHand && st.phase === 'handEnded'
+      && st.communityCards.length - prevCommunity >= 2) {
+    beginRunoutDrama(prevCommunity, st.communityCards.length);
+  }
+  dramaFlipSeq = 0; // hole-card flip stagger restarts for each incoming state
   prevCommunity = st.communityCards.length;
   prevHandNumber = st.handNumber;
   state = st;
@@ -344,7 +362,9 @@ function reconcileCards(wrap, cards, { silent = false } = {}) {
 }
 
 function renderCommunity() {
-  reconcileCards($('#community'), state.communityCards);
+  // During a staggered runout only the already-revealed prefix is rendered;
+  // the drama timers push the rest one card at a time.
+  reconcileCards($('#community'), dramaBoardSlice(state.communityCards));
 }
 
 function renderHeroCards() {
@@ -402,6 +422,7 @@ function renderSeats() {
     el.classList.toggle('active', origIndex === state.currentPlayerIndex && state.phase !== 'handEnded' && state.phase !== 'waiting');
     el.classList.toggle('folded', p.folded && state.phase !== 'waiting');
     el.querySelector('.av').textContent = p.avatar || '🙂';
+    el.querySelector('.seat-avatar').className = 'seat-avatar' + (p.frame ? ` avframe ${p.frame}` : '');
     el.querySelector('.seat-name').textContent = (p.isBot ? '🤖' : '') + p.name + (p.badge ? ` ${p.badge}` : '');
     renderChipCount(el.querySelector('.seat-chips'), p);
     el.querySelector('.seat-dealer').classList.toggle('hidden', origIndex !== state.dealerIndex);
@@ -425,8 +446,9 @@ function renderSeats() {
       && origIndex === state.currentPlayerIndex && isPlayingPhase());
 
     // small cards (hidden backs or showdown reveals) — hero's shown big below
+    // (drama-aware: back→face transitions get a staggered 3D flip)
     const cardsEl = el.querySelector('.seat-cards');
-    reconcileCards(cardsEl, p.userId === myId() ? [] : (p.cards || []), { silent: true });
+    dramaSeatCards(cardsEl, p.userId === myId() ? [] : (p.cards || []));
 
     // peeked cards overlay
     const peekEl = el.querySelector('.peeked-cards');
@@ -667,4 +689,88 @@ function renderChipCount(chipsEl, p) {
   chipsEl.innerHTML = `🪙<span class="chips-num">${fmt(prev)}</span>${levelHtml}`;
   tweenNumber(chipsEl.querySelector('.chips-num'), prev, p.chips, 500);
   bump(chipsEl);
+}
+
+/* ===== SHOWDOWN DRAMA ===== */
+// Staggered all-in board runouts, hole-card flip reveals, and a suspense
+// vignette. Hooked from applyState / renderCommunity / renderSeats and the
+// game:handStarted + game:handEnded handlers above. CSS lives in the matching
+// appended block at the end of table.css. Transforms/opacity only.
+
+const DRAMA_STEP = 450;      // ms between staggered board cards
+const DRAMA_FLIP_MS = 350;   // hole-card flip duration
+const DRAMA_LEAD_MS = 200;   // beat before the first staggered card
+const DRAMA_MAX_HOLD = 2250; // celebration hold cap (250ms base + this = 2.5s)
+
+let dramaTimers = [];  // pending reveal timeouts (cancel on new hand / leave)
+let dramaShown = -1;   // community cards allowed on screen (-1 = no drama)
+let dramaEndAt = 0;    // timestamp when the whole show wraps
+let dramaFlipSeq = 0;  // per-state seat flip stagger counter (reset in applyState)
+
+// While a runout plays, renderCommunity only gets the revealed prefix.
+function dramaBoardSlice(cards) {
+  return dramaShown >= 0 ? cards.slice(0, dramaShown) : cards;
+}
+
+// All-in runout: keep `prefix` cards on the felt, reveal up to `total` one by
+// one with a deal sound + flip-in, under a suspense vignette.
+function beginRunoutDrama(prefix, total) {
+  cancelDrama();
+  dramaShown = prefix;
+  const steps = total - prefix;
+  $('#screen-table').classList.add('drama-suspense');
+  for (let k = 0; k < steps; k++) {
+    dramaTimers.push(setTimeout(dramaRevealNext, DRAMA_LEAD_MS + k * DRAMA_STEP));
+  }
+  const lastAt = DRAMA_LEAD_MS + (steps - 1) * DRAMA_STEP;
+  dramaEndAt = Date.now() + Math.min(DRAMA_MAX_HOLD, lastAt + DRAMA_FLIP_MS);
+  dramaTimers.push(setTimeout(dramaFinish, lastAt + DRAMA_FLIP_MS + 60));
+}
+
+function dramaRevealNext() {
+  if (!state || dramaShown < 0) return;
+  dramaShown = Math.min(dramaShown + 1, state.communityCards.length);
+  const wrap = $('#community');
+  reconcileCards(wrap, state.communityCards.slice(0, dramaShown)); // plays sfx.deal
+  const card = wrap.lastElementChild;
+  if (card && !card.classList.contains('card-runout')) {
+    card.style.animationDelay = '0s';
+    card.classList.add('card-runout');
+  }
+}
+
+function dramaFinish() {
+  dramaShown = -1; // keep dramaEndAt: the celebration hold still reads it
+  $('#screen-table').classList.remove('drama-suspense');
+  if (state) renderCommunity(); // safety net: board fully caught up
+}
+
+function cancelDrama() {
+  dramaTimers.forEach(clearTimeout);
+  dramaTimers = [];
+  dramaShown = -1;
+  dramaEndAt = 0;
+  document.getElementById('screen-table')?.classList.remove('drama-suspense');
+}
+
+// How much longer (past the base 250ms) the win moment should wait so it
+// lands after the last card/flip. 0 when there was no drama.
+function dramaHoldMs() {
+  return Math.max(0, Math.min(DRAMA_MAX_HOLD, dramaEndAt - Date.now()));
+}
+
+// Seat cards with showdown flair: when a seat goes from backs to faces
+// (showdown reveal), the fresh face cards get a 3D flip, seats staggered.
+function dramaSeatCards(wrap, cards) {
+  const hadBacks = wrap.children.length > 0
+    && [...wrap.children].every(el => el.classList.contains('back'));
+  const nowFaces = cards.length > 0 && cards.every(c => c && !c.hidden);
+  reconcileCards(wrap, cards, { silent: true });
+  if (!hadBacks || !nowFaces) return;
+  const base = dramaFlipSeq++ * 120; // stagger seats ~120ms apart
+  [...wrap.children].forEach((el, i) => {
+    el.style.animationDelay = `${base + i * 60}ms`;
+    el.classList.add('card-flip');
+  });
+  dramaEndAt = Math.max(dramaEndAt, Date.now() + base + DRAMA_FLIP_MS + 150);
 }

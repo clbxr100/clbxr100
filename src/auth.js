@@ -69,6 +69,8 @@ function publicProfile(user) {
     tableTheme: user.table_theme,
     cardBack: user.card_back,
     soundPack: user.sound_pack,
+    frame: user.frame,
+    lastSpinAt: user.last_spin_at,
     xp: user.xp,
     level: levelFromXp(user.xp),
     nextLevelXp: xpForLevel(levelFromXp(user.xp) + 1),

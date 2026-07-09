@@ -104,6 +104,7 @@ class Table {
       userId: user.id, name: user.username, avatar: user.avatar, pet: user.pet,
       badge, isBot: false, chips,
     });
+    this.game.getPlayer(user.id).frame = user.frame || null;
     this.game.getPlayer(user.id).level = levelFromXp(user.xp || 0);
     this.systemChat(`${user.username} sat down`);
     // One of the bots may say hi to the newcomer.
@@ -604,7 +605,7 @@ class Table {
         else if (revealed.has(p.userId)) cards = revealed.get(p.userId).cards;
         else cards = p.cards.map(() => ({ hidden: true }));
         return {
-          userId: p.userId, name: p.name, avatar: p.avatar, pet: p.pet, badge: p.badge, level: p.level || null, isBot: p.isBot,
+          userId: p.userId, name: p.name, avatar: p.avatar, pet: p.pet, badge: p.badge, frame: p.frame || null, level: p.level || null, isBot: p.isBot,
           chips: p.chips, bet: p.bet, folded: p.folded, allIn: p.allIn, cards,
           shield: !!(ppu && ppu.shield),
           usedPowerUp: !!(ppu && ppu.usedThisHand),

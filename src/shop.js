@@ -27,7 +27,7 @@ const buyItem = transaction((user, itemId, qty) => {
   const count = Math.max(1, Math.min(10, Math.floor(qty || 1)));
 
   let units, cost;
-  const ownOnce = ['avatar', 'pet', 'celebration', 'theme', 'cardback', 'soundpack'];
+  const ownOnce = ['avatar', 'pet', 'celebration', 'theme', 'cardback', 'soundpack', 'frame'];
   if (ownOnce.includes(item.category)) {
     if (economy.getQty(user.id, itemId) > 0) throw Object.assign(new Error('Already owned'), { status: 400 });
     units = 1;
@@ -47,6 +47,38 @@ const buyItem = transaction((user, itemId, qty) => {
   economy.adjustCoins(user.id, -cost, 'shop_buy', itemId);
   economy.addItem(user.id, itemId, units);
   return { itemId, units, cost };
+});
+
+const doSpin = transaction((user) => {
+  const now = Date.now();
+  const last = user.last_spin_at || 0;
+  if (now - last < catalog.SPIN.cooldownMs) {
+    const err = new Error('Spin not ready yet');
+    err.status = 400;
+    throw Object.assign(err, { nextSpinAt: last + catalog.SPIN.cooldownMs });
+  }
+  const index = catalog.rollSpin();
+  const seg = catalog.SPIN.segments[index];
+  db.prepare('UPDATE users SET last_spin_at = ? WHERE id = ?').run(now, user.id);
+  let coins = 0;
+  let item = null;
+  if (seg.coins) {
+    coins = seg.coins;
+    economy.adjustCoins(user.id, seg.coins, 'daily_spin', seg.id);
+  }
+  if (seg.item) {
+    // Own-once cosmetics (the jackpot frame) convert to coins if already owned.
+    const cat = catalog.findItem(seg.item);
+    const ownOnce = cat && ['frame', 'avatar', 'pet', 'celebration', 'theme', 'cardback', 'soundpack'].includes(cat.category);
+    if (ownOnce && economy.getQty(user.id, seg.item) > 0) {
+      coins += 1500;
+      economy.adjustCoins(user.id, 1500, 'daily_spin', `${seg.id}_dup`);
+    } else {
+      economy.addItem(user.id, seg.item, seg.qty || 1);
+      item = { itemId: seg.item, qty: seg.qty || 1 };
+    }
+  }
+  return { index, segment: seg, coins, item, nextSpinAt: now + catalog.SPIN.cooldownMs };
 });
 
 function mount(route) {
@@ -83,6 +115,8 @@ function mount(route) {
       themes: catalog.THEMES,
       cardbacks: catalog.CARDBACKS,
       soundpacks: catalog.SOUNDPACKS,
+      frames: catalog.FRAMES,
+      spin: catalog.SPIN,
       xp: catalog.XP,
       stakes: catalog.STAKES,
       economy: catalog.ECONOMY,
@@ -129,6 +163,17 @@ function mount(route) {
     sendJson(200, economy.leaderboard(by, req.user.id));
   }));
 
+  // Daily Spin: server rolls the weighted segment, applies the prize, and
+  // returns the segment index so the client wheel can land on it.
+  route('POST', '/api/spin', authed((req, res, { sendJson }) => {
+    try {
+      const result = doSpin(req.user);
+      sendJson(200, { ...result, profile: publicProfile(getUser(req.user.id)) });
+    } catch (err) {
+      sendJson(err.status || 500, { error: err.message, nextSpinAt: err.nextSpinAt });
+    }
+  }));
+
   route('POST', '/api/daily-bonus', authed((req, res, { sendJson }) => {
     const result = economy.claimDailyBonus(req.user.id);
     if (result.error) return sendJson(400, result);
@@ -142,7 +187,13 @@ function mount(route) {
   }));
 
   route('POST', '/api/profile/equip', authed((req, res, { sendJson }) => {
-    const { avatar, pet, celebration, badge, tableTheme, cardBack, soundPack } = req.body;
+    const { avatar, pet, celebration, badge, tableTheme, cardBack, soundPack, frame } = req.body;
+    if (frame !== undefined) {
+      if (frame !== null && (!catalog.FRAMES[frame] || economy.getQty(req.user.id, frame) < 1)) {
+        return sendJson(400, { error: 'You do not own that frame' });
+      }
+      db.prepare('UPDATE users SET frame = ? WHERE id = ?').run(frame, req.user.id);
+    }
     if (soundPack !== undefined) {
       if (soundPack !== null && (!catalog.SOUNDPACKS[soundPack] || economy.getQty(req.user.id, soundPack) < 1)) {
         return sendJson(400, { error: 'You do not own that sound pack' });

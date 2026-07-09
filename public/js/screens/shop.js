@@ -79,6 +79,22 @@ function render() {
           : item.exclusive ? exclusiveTag() : buyBtn(item.id, priceOf(item), p.coins),
       });
     }).join('');
+    // Avatar frames — animated rings everyone sees around your avatar.
+    html += card({
+      emoji: '⭕', name: 'No Frame', desc: 'Plain avatar',
+      action: !p.frame ? equippedBtn() : '<button class="btn btn-ghost" data-equip-frame="">Unequip</button>',
+    });
+    html += Object.values(cat.frames || {}).map(item => {
+      const owned = (inv[item.id] || 0) > 0;
+      return card({
+        emojiHtml: `<span class="frame-preview ${item.id}">${p.avatar}</span>`,
+        name: item.name, desc: item.exclusive ? `${item.exclusive} exclusive` : 'Avatar frame',
+        price: owned || item.exclusive ? null : priceOf(item),
+        action: owned
+          ? (p.frame === item.id ? equippedBtn() : `<button class="btn btn-ghost" data-equip-frame="${item.id}">Equip</button>`)
+          : item.exclusive ? exclusiveTag(item.exclusive) : buyBtn(item.id, priceOf(item), p.coins),
+      });
+    }).join('');
   } else if (category === 'pets') {
     html += card({
       emoji: '🚫', name: 'No pet', desc: 'Play without a companion',
@@ -189,6 +205,7 @@ function render() {
     render();
   }));
   grid.querySelectorAll('[data-equip-avatar]').forEach(b => b.addEventListener('click', () => equip({ avatar: b.dataset.equipAvatar })));
+  grid.querySelectorAll('[data-equip-frame]').forEach(b => b.addEventListener('click', () => equip({ frame: b.dataset.equipFrame || null })));
   grid.querySelectorAll('[data-equip-pet]').forEach(b => b.addEventListener('click', () => equip({ pet: b.dataset.equipPet || null })));
   grid.querySelectorAll('[data-equip-celebration]').forEach(b => b.addEventListener('click', () => equip({ celebration: b.dataset.equipCelebration || null })));
   grid.querySelectorAll('[data-equip-theme]').forEach(b => b.addEventListener('click', () => equip({ tableTheme: b.dataset.equipTheme || null })));
@@ -210,10 +227,10 @@ async function equip(body) {
   }
 }
 
-function card({ emoji, name, desc, price, priceNote, owned, rarity, action }) {
+function card({ emoji, emojiHtml, name, desc, price, priceNote, owned, rarity, action }) {
   return `<div class="shop-item">
     ${rarity ? `<span class="rarity ${rarity}">${rarity}</span>` : ''}
-    <span class="item-emoji">${emoji}</span>
+    <span class="item-emoji">${emojiHtml || emoji}</span>
     <span class="item-name">${esc(name)}</span>
     <span class="item-desc">${esc(desc || '')}</span>
     ${price != null ? `<span class="item-price">🪙 ${fmt(price)}${priceNote ? ` <small>· ${priceNote}</small>` : ''}</span>` : (priceNote ? `<span class="item-desc">${priceNote}</span>` : '')}
@@ -228,13 +245,14 @@ function buyBtn(id, price, coins, maxed = false) {
 
 function findCatalogItem(cat, id) {
   return cat.avatars.premium[id] || cat.pets[id] || cat.celebrations?.[id]
-    || cat.themes?.[id] || cat.cardbacks?.[id] || cat.soundpacks?.[id] || cat.throwables[id] || null;
+    || cat.themes?.[id] || cat.cardbacks?.[id] || cat.soundpacks?.[id]
+    || cat.frames?.[id] || cat.throwables[id] || null;
 }
 
 function equippedBtn() {
   return '<button class="btn btn-success" disabled>Equipped ✓</button>';
 }
 
-function exclusiveTag() {
-  return '<span class="badge gold">🎫 Battle Pass</span>';
+function exclusiveTag(label = 'Battle Pass') {
+  return `<span class="badge gold">🎫 ${esc(label)}</span>`;
 }

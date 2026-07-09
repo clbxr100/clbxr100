@@ -13,6 +13,7 @@ import { initBattlepass } from './screens/battlepass.js';
 import { initTable, enterTable, leaveTableView } from './table/table.js';
 import { initHistory } from './table/history.js';
 import { FX } from './effects/fx.js';
+import { initOnboarding } from './onboarding.js';
 
 export const store = {
   profile: null,
@@ -171,6 +172,7 @@ async function boot() {
   initBattlepass();
   initTable();
   initHistory();
+  initOnboarding();
 
   socket.on('achievement:unlocked', ({ name, badge, desc }) => {
     toast(`🏅 Achievement unlocked: ${badge} ${name} — ${desc}`, 'gold');
