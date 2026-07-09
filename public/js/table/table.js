@@ -96,6 +96,7 @@ export function initTable() {
     ({ fold: sfx.fold, check: sfx.check, call: sfx.chip, raise: sfx.raise, allin: sfx.allin }[action] || sfx.chip)();
     const p = findPlayer(userId);
     if (p && action === 'allin') bannerFlash(`${esc(p.name)} is ALL IN! 🔥`);
+    if (action === 'fold') petReact(userId, 'pet-sad', 900);
   });
 
   socket.on('game:turn', ({ userId, frozen }) => {
@@ -139,6 +140,8 @@ export function initTable() {
     const total = Object.values(result.totalWonBy || {}).reduce((s, x) => s + x, 0);
     setTimeout(() => {
       const winnerEls = winners.map(seatEl).filter(Boolean);
+      winners.forEach(id => petReact(id, 'pet-celebrate', 1600));
+      winnerEls.forEach(el => seatWinnerMoment(el));
       celebrate(result.winningHand ? result.winningHand.rank : 0, {
         winnerEls,
         potEl: $('#pot-display'),
@@ -173,6 +176,7 @@ export function initTable() {
           splat.textContent = itemId === 'throw_cake' ? '🎂' : '🍅';
           toEl.appendChild(splat);
           setTimeout(() => splat.remove(), 4000);
+          petReact(targetUserId, 'pet-startle', 700);
         }
         const from = findPlayer(fromUserId);
         const to = findPlayer(targetUserId);
@@ -217,6 +221,8 @@ export function enterTable(st, asSpectator = false) {
   resetChat();
   peeked.clear();
   clearXray();
+  chipsShown.clear();
+  potShown = 0;
   prevCommunity = 0;
   prevHandNumber = 0;
   spectating = asSpectator;
@@ -303,7 +309,7 @@ function render() {
 }
 
 function renderPot() {
-  $('#pot-amount').textContent = fmt(state.pot);
+  animatePot(state.pot);
   $('#pot-display').classList.toggle('empty', !state.pot);
 }
 
@@ -397,7 +403,7 @@ function renderSeats() {
     el.classList.toggle('folded', p.folded && state.phase !== 'waiting');
     el.querySelector('.av').textContent = p.avatar || '🙂';
     el.querySelector('.seat-name').textContent = (p.isBot ? '🤖' : '') + p.name + (p.badge ? ` ${p.badge}` : '');
-    el.querySelector('.seat-chips').innerHTML = `🪙${fmt(p.chips)}${p.level ? ` <span class="seat-level">L${p.level}</span>` : ''}`;
+    renderChipCount(el.querySelector('.seat-chips'), p);
     el.querySelector('.seat-dealer').classList.toggle('hidden', origIndex !== state.dealerIndex);
     el.querySelector('.seat-shield').classList.toggle('hidden', !p.shield);
     el.querySelector('.seat-crown').classList.toggle('hidden', String(p.userId) !== crownId);
@@ -413,6 +419,10 @@ function renderSeats() {
     const petDef = p.pet && store.catalog?.pets?.[p.pet];
     petSpan.classList.toggle('hidden', !petDef);
     if (petDef) petSpan.textContent = petDef.emoji;
+    // persistent pet moods: sleep while sitting out, alert while it's the owner's turn
+    petSpan.classList.toggle('pet-sleep', !!petDef && !!p.sittingOut);
+    petSpan.classList.toggle('pet-alert', !!petDef && !p.sittingOut && !p.folded
+      && origIndex === state.currentPlayerIndex && isPlayingPhase());
 
     // small cards (hidden backs or showdown reveals) — hero's shown big below
     const cardsEl = el.querySelector('.seat-cards');
@@ -433,7 +443,7 @@ function renderSeats() {
 
   // remove departed seats + their bets
   document.querySelectorAll('.seat').forEach(el => {
-    if (!seen.has(el.dataset.uid)) el.remove();
+    if (!seen.has(el.dataset.uid)) { el.remove(); chipsShown.delete(el.dataset.uid); }
   });
   document.querySelectorAll('.seat-bet').forEach(el => {
     if (!seen.has(el.dataset.uid)) el.remove();
@@ -578,4 +588,83 @@ function ordinal(n) {
 }
 function medal(place) {
   return place === 1 ? '🥇' : place === 2 ? '🥈' : place === 3 ? '🥉' : `${place}.`;
+}
+
+/* ===== PET LIFE + MICRO-INTERACTIONS ===== */
+// Helpers only — hooked from the socket handlers / render functions above.
+// CSS lives in the matching appended block at the end of table.css.
+
+const PET_ONESHOTS = ['pet-celebrate', 'pet-sad', 'pet-startle'];
+const petTimers = new Map(); // userId -> timeout for the active one-shot class
+
+// One-shot pet reaction: swap out competing one-shots, add cls, remove after ms.
+function petReact(userId, cls, ms) {
+  const pet = seatEl(userId)?.querySelector('.seat-pet');
+  if (!pet || pet.classList.contains('hidden')) return;
+  clearTimeout(petTimers.get(String(userId)));
+  PET_ONESHOTS.forEach(c => pet.classList.remove(c));
+  void pet.offsetWidth; // restart the animation even if cls was just removed
+  pet.classList.add(cls);
+  petTimers.set(String(userId), setTimeout(() => pet.classList.remove(cls), ms));
+}
+
+// Golden ring ripple + scale pop on a winning seat (~2s, self-clearing).
+function seatWinnerMoment(el) {
+  el.classList.remove('seat-winner');
+  void el.offsetWidth;
+  el.classList.add('seat-winner');
+  setTimeout(() => el.classList.remove('seat-winner'), 2000);
+}
+
+// rAF number tween (transform-free — just text), ease-out cubic.
+function tweenNumber(el, from, to, ms = 400) {
+  cancelAnimationFrame(el._tweenRaf || 0);
+  const start = performance.now();
+  const step = (now) => {
+    const t = Math.min(1, (now - start) / ms);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = fmt(Math.round(from + (to - from) * eased));
+    if (t < 1) el._tweenRaf = requestAnimationFrame(step);
+  };
+  el._tweenRaf = requestAnimationFrame(step);
+}
+
+// Tiny scale pulse on a counter element (class removes itself).
+function bump(el) {
+  el.classList.remove('pot-bump');
+  void el.offsetWidth;
+  el.classList.add('pot-bump');
+  clearTimeout(el._bumpTimer);
+  el._bumpTimer = setTimeout(() => el.classList.remove('pot-bump'), 450);
+}
+
+// Pot count-up: tween increases, snap decreases/resets (hand start goes straight to 0).
+let potShown = 0;
+function animatePot(pot) {
+  const el = $('#pot-amount');
+  if (pot > potShown) {
+    tweenNumber(el, potShown, pot, 400);
+    bump(el);
+  } else if (pot !== potShown) {
+    cancelAnimationFrame(el._tweenRaf || 0);
+    el.textContent = fmt(pot);
+  }
+  potShown = pot;
+}
+
+// Seat chip counter: tick up only when the stack grows at showdown (a win).
+const chipsShown = new Map(); // uid -> last chips value rendered
+function renderChipCount(chipsEl, p) {
+  const uid = String(p.userId);
+  const prev = chipsShown.get(uid);
+  chipsShown.set(uid, p.chips);
+  const levelHtml = p.level ? ` <span class="seat-level">L${p.level}</span>` : '';
+  const grew = typeof prev === 'number' && p.chips > prev && state.phase === 'handEnded';
+  if (!grew) {
+    chipsEl.innerHTML = `🪙${fmt(p.chips)}${levelHtml}`;
+    return;
+  }
+  chipsEl.innerHTML = `🪙<span class="chips-num">${fmt(prev)}</span>${levelHtml}`;
+  tweenNumber(chipsEl.querySelector('.chips-num'), prev, p.chips, 500);
+  bump(chipsEl);
 }

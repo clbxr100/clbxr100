@@ -76,6 +76,7 @@
         <button class="nav-card" id="nav-shop"><span class="nav-emoji">🛍️</span><span>Shop</span><small>Avatars, pets &amp; power-ups</small></button>
         <button class="nav-card" id="nav-leaderboard"><span class="nav-emoji">🥇</span><span>Leaderboard</span><small>Who runs this town?</small></button>
         <button class="nav-card" id="nav-friends"><span class="nav-emoji">👥</span><span>Friends</span><small>See who's online, chat &amp; join<span class="chat-unread hidden" id="friends-unread">0</span></small></button>
+        <button class="nav-card nav-bp" id="nav-battlepass"><span class="nav-emoji">🎫</span><span>Battle Pass</span><small>Season rewards — play, earn, claim</small></button>
       </nav>
       <div class="stats-card" id="quests-card">
         <h3>📋 Daily Quests</h3>
@@ -119,6 +120,16 @@
         <button class="btn btn-ghost" id="dm-close">Close</button>
       </div>
     </div>
+  </section>
+
+  <!-- ============ BATTLE PASS ============ -->
+  <section id="screen-battlepass" class="screen hidden">
+    <header class="topbar">
+      <button class="btn btn-ghost" data-nav="dashboard">‹ Back</button>
+      <h2>🎫 Battle Pass</h2>
+      <span></span>
+    </header>
+    <div class="list-body" id="bp-body"></div>
   </section>
 
   <!-- ============ LEADERBOARD ============ -->

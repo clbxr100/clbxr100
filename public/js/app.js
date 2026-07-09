@@ -9,6 +9,7 @@ import { initShop } from './screens/shop.js';
 import { initTournaments } from './screens/tournaments.js';
 import { initLeaderboard } from './screens/leaderboard.js';
 import { initFriends } from './screens/friends.js';
+import { initBattlepass } from './screens/battlepass.js';
 import { initTable, enterTable, leaveTableView } from './table/table.js';
 import { initHistory } from './table/history.js';
 import { FX } from './effects/fx.js';
@@ -30,7 +31,7 @@ export function fmt(n) {
 }
 
 // ---------- router ----------
-const screens = ['auth', 'dashboard', 'lobby', 'shop', 'tournaments', 'leaderboard', 'friends', 'table'];
+const screens = ['auth', 'dashboard', 'lobby', 'shop', 'tournaments', 'leaderboard', 'friends', 'battlepass', 'table'];
 const showHandlers = {};
 
 export function onShow(name, fn) { showHandlers[name] = fn; }
@@ -167,6 +168,7 @@ async function boot() {
   initTournaments();
   initLeaderboard();
   initFriends();
+  initBattlepass();
   initTable();
   initHistory();
 

@@ -98,6 +98,27 @@ db.exec(`
     unlocked_at INTEGER NOT NULL,
     PRIMARY KEY (user_id, achievement_id)
   );
+
+  CREATE TABLE IF NOT EXISTS season_xp (
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    season TEXT NOT NULL,               -- battle pass month, e.g. 2026-07
+    xp INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, season)
+  );
+
+  CREATE TABLE IF NOT EXISTS bp_premium (
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    season TEXT NOT NULL,
+    PRIMARY KEY (user_id, season)
+  );
+
+  CREATE TABLE IF NOT EXISTS bp_claims (
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    season TEXT NOT NULL,
+    tier INTEGER NOT NULL,
+    track TEXT NOT NULL,                -- free | gold
+    PRIMARY KEY (user_id, season, tier, track)
+  );
 `);
 try { db.exec('ALTER TABLE users ADD COLUMN badge TEXT'); } catch { /* already present */ }
 try { db.exec('ALTER TABLE stats ADD COLUMN best_streak INTEGER DEFAULT 0'); } catch { /* already present */ }

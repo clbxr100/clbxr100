@@ -117,6 +117,7 @@ const AVATARS = {
     avatar_gorilla: { id: 'avatar_gorilla', emoji: '🦍', name: 'Silverback', price: 6500 },
     avatar_clown: { id: 'avatar_clown', emoji: '🤡', name: 'Wildcard', price: 7000 },
     avatar_royalty: { id: 'avatar_royalty', emoji: '🤴', name: 'The Prince', price: 8000 },
+    avatar_hero: { id: 'avatar_hero', emoji: '🦸', name: 'The Hero', price: 0, buyable: false, exclusive: 'Battle Pass' },
   },
 };
 
@@ -132,6 +133,7 @@ const PETS = {
   pet_octopus: { id: 'pet_octopus', emoji: '🐙', name: 'Card Counter', price: 6000 },
   pet_sloth: { id: 'pet_sloth', emoji: '🦥', name: 'Slowroll', price: 5500 },
   pet_phoenix: { id: 'pet_phoenix', emoji: '🐦‍🔥', name: 'Phoenix', price: 20000 },
+  pet_jackpot: { id: 'pet_jackpot', emoji: '🎰', name: 'Jackpot', price: 0, buyable: false, exclusive: 'Battle Pass' },
 };
 
 const THROWABLES = {
@@ -199,6 +201,51 @@ const SEASON = {
   prizes: [2000, 1000, 500], // weekly top 3 by hands won
 };
 
+// Battle pass: monthly season, 20 tiers, free + Gold tracks. Gold costs
+// coins (play money). Tier n costs 100 + 40*(n-1) season XP.
+const BATTLEPASS = {
+  goldPrice: 5000,
+  tiers: 20,
+  rewards: {
+    1: { free: { coins: 150 }, gold: { coins: 400 } },
+    2: { free: { item: 'throw_tomato', qty: 5 }, gold: { item: 'pu_shield', qty: 2 } },
+    3: { free: { coins: 200 }, gold: { coins: 500 } },
+    4: { free: { item: 'pu_swap', qty: 1 }, gold: { item: 'throw_cake', qty: 5 } },
+    5: { free: { coins: 250 }, gold: { item: 'pu_lucky', qty: 2 } },
+    6: { free: { item: 'throw_confetti', qty: 5 }, gold: { coins: 700 } },
+    7: { free: { coins: 300 }, gold: { item: 'pu_peek', qty: 2 } },
+    8: { free: { item: 'pu_insurance', qty: 1 }, gold: { item: 'throw_diamond', qty: 3 } },
+    9: { free: { coins: 350 }, gold: { coins: 900 } },
+    10: { free: { item: 'pu_xray', qty: 1 }, gold: { item: 'avatar_hero', qty: 1 } },
+    11: { free: { coins: 400 }, gold: { item: 'pu_taxman', qty: 2 } },
+    12: { free: { item: 'throw_snowball', qty: 5 }, gold: { coins: 1100 } },
+    13: { free: { coins: 450 }, gold: { item: 'pu_freeze', qty: 1 } },
+    14: { free: { item: 'pu_mulligan', qty: 1 }, gold: { item: 'pu_double', qty: 2 } },
+    15: { free: { coins: 500 }, gold: { item: 'cb_neon', qty: 1 } },
+    16: { free: { item: 'throw_rose', qty: 5 }, gold: { coins: 1400 } },
+    17: { free: { coins: 600 }, gold: { item: 'pu_steal', qty: 1 } },
+    18: { free: { item: 'pu_blindfold', qty: 1 }, gold: { coins: 1700 } },
+    19: { free: { coins: 700 }, gold: { item: 'pu_lucky', qty: 3 } },
+    20: { free: { coins: 1000 }, gold: { item: 'pet_jackpot', qty: 1 } },
+  },
+};
+
+function bpSeason(date = new Date()) {
+  return date.toISOString().slice(0, 7); // e.g. 2026-07
+}
+
+function bpSeasonEndsAt() {
+  const now = new Date();
+  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1);
+}
+
+// Cumulative season XP required to unlock tier n.
+function bpTierXp(n) {
+  let total = 0;
+  for (let i = 1; i <= n; i++) total += 100 + 40 * (i - 1);
+  return total;
+}
+
 // Table felt themes (personal — changes how YOU see every table).
 const THEMES = {
   theme_midnight: { id: 'theme_midnight', name: 'Midnight', emoji: '🌃', price: 2000, felt: '#14418c', feltDark: '#0c2b61', trim: '#1e2a4a' },
@@ -231,6 +278,7 @@ const CARDBACKS = {
   cb_ice: { id: 'cb_ice', name: 'Frostbite', emoji: '❄️', price: 1800 },
   cb_royal: { id: 'cb_royal', name: 'Royal Crown', emoji: '👑', price: 2800 },
   cb_skull: { id: 'cb_skull', name: 'Dead Man\'s Hand', emoji: '💀', price: 3200 },
+  cb_neon: { id: 'cb_neon', name: 'Neon Dream', emoji: '🌈', price: 0, buyable: false, exclusive: 'Battle Pass' },
 };
 
 // XP: cumulative threshold for level L is 60*(L-1)^2.
@@ -309,7 +357,7 @@ function dealsForDay(day) {
     ...Object.values(AVATARS.premium), ...Object.values(PETS),
     ...Object.values(CELEBRATIONS), ...Object.values(THEMES),
     ...Object.values(CARDBACKS), ...Object.values(SOUNDPACKS),
-  ].map(i => i.id);
+  ].filter(i => i.buyable !== false).map(i => i.id);
   let h = 7;
   for (const ch of day) h = (h * 33 + ch.charCodeAt(0)) >>> 0;
   const picked = [];
@@ -346,4 +394,5 @@ module.exports = {
   QUESTS, ACHIEVEMENTS, SEASON, THEMES, CARDBACKS, SOUNDPACKS, XP,
   questsForDay, rollFreePowerUp, findItem, levelFromXp, xpForLevel, titleForLevel,
   dealsForDay, dealPrice,
+  BATTLEPASS, bpSeason, bpSeasonEndsAt, bpTierXp,
 };

@@ -48,6 +48,9 @@ export function celebrate(rank, { winnerEls = [], potEl, amount = 0 }) {
     return;
   }
 
+  // Big-win moment (rank 5+): warm gold flash swelling behind the pot.
+  FX.play('goldFlash', { x: pot.cx, y: pot.cy });
+
   if (rank <= 6) {
     sfx.bigWin();
     FX.play('confettiCannons');

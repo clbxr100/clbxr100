@@ -72,11 +72,11 @@ function render() {
     html += Object.values(cat.avatars.premium).map(item => {
       const owned = (inv[item.id] || 0) > 0;
       return card({
-        emoji: item.emoji, name: item.name, desc: 'Premium avatar',
-        price: owned ? null : priceOf(item),
+        emoji: item.emoji, name: item.name, desc: item.exclusive ? `${item.exclusive} exclusive` : 'Premium avatar',
+        price: owned || item.exclusive ? null : priceOf(item),
         action: owned
           ? (p.avatar === item.emoji ? equippedBtn() : `<button class="btn btn-ghost" data-equip-avatar="${item.emoji}">Equip</button>`)
-          : buyBtn(item.id, priceOf(item), p.coins),
+          : item.exclusive ? exclusiveTag() : buyBtn(item.id, priceOf(item), p.coins),
       });
     }).join('');
   } else if (category === 'pets') {
@@ -87,11 +87,11 @@ function render() {
     html += Object.values(cat.pets).map(item => {
       const owned = (inv[item.id] || 0) > 0;
       return card({
-        emoji: item.emoji, name: item.name, desc: 'Sits at the table with you',
-        price: owned ? null : priceOf(item),
+        emoji: item.emoji, name: item.name, desc: item.exclusive ? `${item.exclusive} exclusive` : 'Sits at the table with you',
+        price: owned || item.exclusive ? null : priceOf(item),
         action: owned
           ? (p.pet === item.id ? equippedBtn() : `<button class="btn btn-ghost" data-equip-pet="${item.id}">Equip</button>`)
-          : buyBtn(item.id, priceOf(item), p.coins),
+          : item.exclusive ? exclusiveTag() : buyBtn(item.id, priceOf(item), p.coins),
       });
     }).join('');
   } else if (category === 'throwables') {
@@ -139,11 +139,11 @@ function render() {
     html += Object.values(cat.cardbacks || {}).map(item => {
       const owned = (inv[item.id] || 0) > 0;
       return card({
-        emoji: item.emoji, name: item.name, desc: 'Card back design',
-        price: owned ? null : priceOf(item),
+        emoji: item.emoji, name: item.name, desc: item.exclusive ? `${item.exclusive} exclusive` : 'Card back design',
+        price: owned || item.exclusive ? null : priceOf(item),
         action: owned
           ? (p.cardBack === item.id ? equippedBtn() : `<button class="btn btn-ghost" data-equip-back="${item.id}">Equip</button>`)
-          : buyBtn(item.id, priceOf(item), p.coins),
+          : item.exclusive ? exclusiveTag() : buyBtn(item.id, priceOf(item), p.coins),
       });
     }).join('');
     html += card({
@@ -233,4 +233,8 @@ function findCatalogItem(cat, id) {
 
 function equippedBtn() {
   return '<button class="btn btn-success" disabled>Equipped ✓</button>';
+}
+
+function exclusiveTag() {
+  return '<span class="badge gold">🎫 Battle Pass</span>';
 }

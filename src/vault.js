@@ -26,6 +26,10 @@ function buildVault(userId) {
     inventory[row.item_id] = row.qty;
   }
   const achievements = db.prepare('SELECT achievement_id FROM achievements WHERE user_id = ?').all(userId).map(r => r.achievement_id);
+  const season = new Date().toISOString().slice(0, 7);
+  const sxp = db.prepare('SELECT xp FROM season_xp WHERE user_id = ? AND season = ?').get(userId, season);
+  const bpGold = !!db.prepare('SELECT 1 FROM bp_premium WHERE user_id = ? AND season = ?').get(userId, season);
+  const bpClaims = db.prepare('SELECT tier, track FROM bp_claims WHERE user_id = ? AND season = ?').all(userId, season);
   const data = {
     v: 1,
     ts: Date.now(),
@@ -44,6 +48,7 @@ function buildVault(userId) {
     stats,
     inventory,
     achievements,
+    bp: { season, xp: sxp ? sxp.xp : 0, gold: bpGold, claims: bpClaims },
   };
   const blob = Buffer.from(JSON.stringify(data)).toString('base64url');
   return { blob, sig: sign(blob) };
@@ -80,6 +85,23 @@ const applyVault = transaction((user, data) => {
   }
   const insAch = db.prepare('INSERT OR IGNORE INTO achievements (user_id, achievement_id, unlocked_at) VALUES (?, ?, ?)');
   for (const ach of data.achievements || []) insAch.run(user.id, String(ach), data.ts);
+  // Battle pass progress rides along (only for the still-current season).
+  const nowSeason = new Date().toISOString().slice(0, 7);
+  if (data.bp && data.bp.season === nowSeason) {
+    if (data.bp.xp > 0) {
+      db.prepare(`
+        INSERT INTO season_xp (user_id, season, xp) VALUES (?, ?, ?)
+        ON CONFLICT(user_id, season) DO UPDATE SET xp = MAX(xp, excluded.xp)
+      `).run(user.id, nowSeason, Math.floor(data.bp.xp));
+    }
+    if (data.bp.gold) {
+      db.prepare('INSERT OR IGNORE INTO bp_premium (user_id, season) VALUES (?, ?)').run(user.id, nowSeason);
+    }
+    const insClaim = db.prepare('INSERT OR IGNORE INTO bp_claims (user_id, season, tier, track) VALUES (?, ?, ?, ?)');
+    for (const c of data.bp.claims || []) {
+      if (Number.isInteger(c.tier) && (c.track === 'free' || c.track === 'gold')) insClaim.run(user.id, nowSeason, c.tier, c.track);
+    }
+  }
   db.prepare('INSERT INTO transactions (user_id, amount, reason, ref, created_at) VALUES (?, ?, ?, ?, ?)')
     .run(user.id, 0, 'vault_restore', String(data.ts), Date.now());
 });

@@ -22,11 +22,13 @@ const PORT = process.env.PORT || 3000;
   const { db } = require('./src/db');
 
   const vault = require('./src/vault');
+  const battlepass = require('./src/battlepass');
 
   const { server, route } = createApp({ staticDir: path.join(__dirname, 'public') });
   shop.mount(route);
   social.mount(route);
   vault.mount(route);
+  battlepass.mount(route);
 
   const lobby = new LobbyManager();
   presence.register(lobby);

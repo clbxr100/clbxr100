@@ -89,7 +89,7 @@ const consumeItem = transaction((userId, itemId) => {
 
 // ---- XP / levels ----------------------------------------------------------
 
-const { questsForDay, levelFromXp, XP } = require('./catalog');
+const { questsForDay, levelFromXp, XP, bpSeason } = require('./catalog');
 const presence = require('./presence');
 
 function addXp(userId, amount) {
@@ -98,6 +98,11 @@ function addXp(userId, amount) {
   const before = levelFromXp(row.xp);
   const xp = row.xp + amount;
   db.prepare('UPDATE users SET xp = ? WHERE id = ?').run(xp, userId);
+  // XP also advances the current battle pass season.
+  db.prepare(`
+    INSERT INTO season_xp (user_id, season, xp) VALUES (?, ?, ?)
+    ON CONFLICT(user_id, season) DO UPDATE SET xp = xp + excluded.xp
+  `).run(userId, bpSeason(), amount);
   const after = levelFromXp(xp);
   if (after > before) {
     presence.sendTo(userId, 'xp:levelUp', { level: after });
