@@ -1,218 +1,146 @@
-# 🃏 Multiplayer Texas Hold'em Poker Game
+# 🃏 Hold'em Blitz
 
-A fun and interactive multiplayer Texas Hold'em poker game with live chat, avatars, and exciting animations! Perfect for playing with friends on localhost.
+Mobile-first multiplayer Texas Hold'em with **power-ups**, bots, tournaments,
+a coin economy, table pets, throwable cakes, and Rocket-League-style win
+celebrations. **Zero npm dependencies** — pure Node.js and vanilla JS.
 
-## ✨ Features
+## 🚀 Run it
 
-- **Full Texas Hold'em Rules**: Complete implementation of traditional poker rules
-- **Multiplayer Support**: Up to 8 players can join a game
-- **Live Chat**: Real-time chat with your friends while playing
-- **Fun Avatars**: Choose from 12 different avatar emojis
-- **Emoji Reactions**: Send emoji reactions that animate on screen
-- **Beautiful UI**: Gorgeous poker table design with smooth animations
-- **Sound Effects**: Audio feedback for actions and messages
-- **Real-time Updates**: Instant game state synchronization using Socket.io
-- **Responsive Design**: Works on different screen sizes
+Requires **Node.js 22.5+** (uses the built-in `node:sqlite`).
 
-## 🎮 Game Rules
-
-This game follows standard Texas Hold'em rules:
-
-1. **Blinds**: Small blind and big blind are posted before each hand
-2. **Hole Cards**: Each player receives 2 private cards
-3. **Betting Rounds**:
-   - **Pre-flop**: After receiving hole cards
-   - **Flop**: After 3 community cards are dealt
-   - **Turn**: After the 4th community card
-   - **River**: After the 5th community card
-4. **Actions**: Fold, Check, Call, Raise, or All-In
-5. **Showdown**: Best 5-card hand wins (using any combination of hole cards and community cards)
-
-### Hand Rankings (Highest to Lowest)
-1. Royal Flush
-2. Straight Flush
-3. Four of a Kind
-4. Full House
-5. Flush
-6. Straight
-7. Three of a Kind
-8. Two Pair
-9. One Pair
-10. High Card
-
-## 🚀 Setup Instructions
-
-### Prerequisites
-- Node.js (v14 or higher)
-- npm (comes with Node.js)
-
-### Installation
-
-1. **Install Dependencies**
-   ```bash
-   npm install
-   ```
-
-2. **Start the Server**
-   ```bash
-   npm start
-   ```
-
-   Or for development with auto-restart:
-   ```bash
-   npm run dev
-   ```
-
-3. **Open Your Browser**
-   - Navigate to `http://localhost:3000`
-   - Share this URL with your friends on the same network!
-
-## 👥 How to Play
-
-### Starting a Game
-
-1. **Choose Your Avatar**: Select your favorite emoji avatar
-2. **Enter Your Name**: Type in a username
-3. **Enter Room ID**: Use the same room ID as your friends (default: "room1")
-4. **Click "Join Game"**: Join the poker room
-5. **Start Game**: Once at least 2 players have joined, click "Start Game"
-
-### During the Game
-
-- **Your Turn**: When it's your turn, the action panel appears at the bottom
-- **Make Your Move**: Choose from available actions:
-  - **Fold**: Give up your hand
-  - **Check**: Pass if no bet is required
-  - **Call**: Match the current bet
-  - **Raise**: Increase the bet (use slider to set amount)
-  - **All In**: Bet all your chips
-
-- **Chat**: Use the chat sidebar to talk with other players
-- **Emoji Reactions**: Click emoji buttons to send animated reactions
-
-### Game Flow
-
-1. Dealer button rotates clockwise each hand
-2. Small and big blinds are posted
-3. Each player receives 2 hole cards
-4. Betting round (Pre-flop)
-5. Flop: 3 community cards revealed
-6. Betting round
-7. Turn: 4th community card revealed
-8. Betting round
-9. River: 5th community card revealed
-10. Final betting round
-11. Showdown: Best hand wins!
-12. Next hand begins automatically
-
-## 🎨 Avatar Options
-
-Choose from these fun avatars:
-- 🤠 Cowboy
-- 😎 Cool
-- 🤖 Robot
-- 👑 King
-- 🦊 Fox
-- 🐼 Panda
-- 🦁 Lion
-- 🐯 Tiger
-- 🎃 Pumpkin
-- 👻 Ghost
-- 🎭 Theater
-- 🎪 Circus
-
-## 💬 Chat Features
-
-- **Live Messaging**: Send text messages to all players
-- **Emoji Reactions**: Quick emoji buttons for common reactions
-- **System Messages**: Game events are announced in chat
-- **Floating Animations**: Emoji reactions animate across the screen
-
-## 🎯 Tips for Fun Gameplay
-
-1. **Bluff**: Try to bluff your friends! The chat makes it more fun
-2. **Use Emojis**: React to big wins or bad beats with emoji reactions
-3. **Starting Chips**: Each player starts with $1,000 in chips
-4. **Blinds**: Small blind: $10, Big blind: $20
-5. **All-In Drama**: Going all-in creates exciting moments!
-
-## 🔧 Configuration
-
-You can customize the game by editing `poker-game.js`:
-
-- **Starting Chips**: Change `chips: 1000` in the `addPlayer` method
-- **Blind Amounts**: Modify `smallBlind` and `bigBlind` in the constructor
-- **Max Players**: Change the limit in `addPlayer` (currently 8)
-
-## 📁 Project Structure
-
-```
-.
-├── server.js           # Express + Socket.io server
-├── poker-game.js       # Texas Hold'em game logic
-├── package.json        # Dependencies
-├── public/
-│   ├── index.html      # Main game interface
-│   ├── style.css       # Styling and animations
-│   └── game.js         # Client-side game logic
-└── POKER_README.md     # This file
+```bash
+npm start          # or: node --no-warnings server.js
 ```
 
-## 🐛 Troubleshooting
+Open `http://localhost:3000` — share your LAN IP with friends to play
+together. Works great on phones (portrait).
 
-### Port Already in Use
-If port 3000 is already in use, you can change it in `server.js`:
-```javascript
-const PORT = 3001; // Change to any available port
+```bash
+npm test           # poker engine simulation suite
 ```
 
-### Players Can't Connect
-- Make sure all players are on the same network
-- Check your firewall settings
-- Ensure the server is running
+## ✨ What's inside
 
-### Game Not Starting
-- Need at least 2 players to start
-- Make sure you're in the same room (same Room ID)
+### Accounts & economy
+- **Sign up / sign in** (username + password, scrypt-hashed, SQLite) or play
+  as a **guest** (kept for 7 days)
+- **Coins**: start with 5,000 (guests 2,000), earn a **daily bonus** with
+  streaks, win bonuses each hand, big-hand jackpots (Royal Flush +5,000),
+  and a bailout when you're broke
+- **Shop**: premium avatars (💰 🤑 💎 👽 😈 🐲), table **pets** that perch on
+  your seat (🐕 🐈 🐢 🦜 🦄 🐉), throwable item packs, and power-up credits
+- Every coin movement is recorded in a `transactions` ledger
 
-## 🎮 Network Play
+### Playing
+- **Lobby**: host public or private (code-protected) tables at three stakes
+  (10/20, 50/100, 250/500) with **0–7 bots**
+- **Bots** play real poker — Chen-formula preflop, Monte Carlo hand strength
+  postflop, individual personalities, and they use power-ups too
+- **Sit & Go tournaments**: entry fees, prize pools, blinds up every 8
+  hands, eliminations and podium payouts (60/30/10)
+- Full rules: side pots for all-ins, correct betting rounds, kickers,
+  turn timer, reconnect grace (your seat is held for 60s)
 
-### Playing on Same Computer
-- Open multiple browser tabs to `http://localhost:3000`
-- Each tab can be a different player
+### ⚡ Power-ups (the twist)
+Every hand each player is dealt **one free random power-up**, and you can
+stock more from the shop. **Max one use per hand, only on your turn.**
 
-### Playing on Local Network
-- Find your local IP address:
-  - **Windows**: Run `ipconfig` in command prompt
-  - **Mac/Linux**: Run `ifconfig` or `ip addr`
-- Share your IP with friends: `http://YOUR_IP:3000`
-- Example: `http://192.168.1.100:3000`
+| Power-up | Effect | Rarity |
+|---|---|---|
+| 🔄 Card Swap | Replace one of your hole cards | Common |
+| 🛡️ Shield | Blocks the next offensive power-up aimed at you | Common |
+| 🕶️ Blind Skip | House covers your blinds next hand | Common |
+| 👁️ Peek | Secretly see an opponent's hole cards | Rare |
+| 🔮 Future Sight | Secretly preview the next community card | Rare |
+| 💥 Double Down | Win at showdown → house pays +50% pot bonus | Epic |
+| 🪤 Pot Steal | Snatch 25% of the pot (any Shield blocks it) | Epic |
+| 💀 Force Fold | Force an opponent to fold — free deal only, never sold | Legendary |
 
-## 🌟 Future Enhancements
+### 🎉 Spectacle
+- Win celebrations scale with your hand: chip flights → confetti → cannons
+  + screen shake → fireworks → lightning → **explosion card blast** →
+  **Royal Flush hurricane** that sweeps the cards off the table with coin
+  rain and fireworks
+- **Throw or gift items**: cakes and tomatoes splat on players, confetti
+  bombs burst, drinks/cookies/roses land gently
+- Live chat bottom-sheet with floating emoji reactions
+- Synth sound effects (WebAudio — no audio files, mute toggle on dashboard)
 
-Potential features to add:
-- Tournament mode
-- Player statistics
-- Customizable blinds structure
-- Different poker variants
-- Player avatars upload
-- Voice chat integration
-- More sound effects and music
+## 🏗️ Architecture
 
-## 🤝 Credits
+Zero dependencies; everything is Node built-ins + vanilla ES modules.
 
-Created with ❤️ for fun poker nights with friends!
+```
+server.js              bootstrap: HTTP + WebSocket + lobby
+src/
+  webserver.js         static files + JSON REST routing (node:http)
+  ws.js                RFC 6455 WebSocket server (replaces socket.io)
+  db.js                node:sqlite schema + transactions
+  auth.js              scrypt passwords, HMAC session tokens
+  catalog.js           single source of truth for items/power-ups/stakes
+  economy.js           coins ledger, daily bonus, bailout, stats
+  shop.js              REST endpoints (auth, shop, profile)
+  bots.js              bot AI
+  table.js             seats, timers, bots, power-up routing, state filtering
+  lobby.js             connections, tables, tournaments, reconnect
+  tournament.js        sit-n-go lifecycle
+poker-game.js          pure hold'em engine (side pots, power-up hooks)
+public/                the client (no build step)
+  js/app.js            store + screen router
+  js/screens/*         auth, dashboard, lobby, shop, tournaments
+  js/table/*           table renderer, action bar, chat
+  js/effects/*         canvas FX engine + celebrations
+tests/engine-sim.js    engine verification suite
+```
 
-Built with:
-- Node.js
-- Express
-- Socket.io
-- Pure HTML/CSS/JavaScript
+**Security model**: the server never trusts the client — hole cards are
+filtered per player, Peek results are sent only to the peeker's socket,
+and all coin movements happen server-side inside SQL transactions.
+
+## ☁️ Hosting note (Render free tier)
+
+Render's **free** instances have an ephemeral disk: every deploy and every
+sleep/wake cycle resets `poker.db`, which wipes accounts and coins. Two
+ways to keep data forever:
+
+### Free: cloud backup to Firebase (recommended)
+
+The server can back up the database to a Firebase Realtime Database every
+minute and restore it automatically on boot (worst case you lose the last
+~60 seconds). Setup, once:
+
+1. Go to [console.firebase.google.com](https://console.firebase.google.com)
+   → **Add project** (any name, Analytics off is fine)
+2. **Build → Realtime Database → Create database** → choose **locked mode**
+3. **Project settings (gear) → Service accounts → Database secrets** →
+   copy the secret
+4. On your host set two env vars:
+   - `BACKUP_URL` = `https://<your-project>-default-rtdb.firebaseio.com/holdem.json`
+   - `BACKUP_SECRET` = the secret you copied
+5. Redeploy. The logs will show `☁️ backup: enabled`.
+
+Any endpoint that answers GET/PUT with JSON works — Firebase is just the
+easiest free one. `JWT_SECRET` should also be set so sessions survive
+restarts.
+
+### Paid: Render disk
+
+Upgrade the service to a paid instance, attach a **Disk** (mount path
+`/data`), and set `POKER_DB=/data/poker.db`.
+
+## 🔧 Handy env vars
+
+| Var | Effect |
+|---|---|
+| `PORT` | HTTP port (default 3000) |
+| `POKER_DB` | SQLite path (default `./poker.db`) |
+| `JWT_SECRET` | Session token secret (auto-generated otherwise) |
+| `POKER_FAST_TOURNEY` | Tiny stacks + rapid pacing, for testing |
+| `BACKUP_URL` | Cloud backup endpoint (Firebase RTDB `.json` URL) |
+| `BACKUP_SECRET` | Auth secret appended to backup requests |
+| `BACKUP_INTERVAL_MS` | Backup frequency (default 60000) |
+| `ADMIN_USERS` | Comma-separated admin usernames (default `breezyonda1`) |
 
 ## 📝 License
 
-MIT License - Feel free to modify and share!
-
----
-
-**Have fun playing! May the best hand win! 🎰🃏**
+MIT — deal 'em up! 🎰

@@ -1,0 +1,17 @@
+# Render Blueprint — creates ONE free web service named "poker".
+# Deploy: dashboard.render.com → New → Blueprint → pick this repo and the
+# claude/texas-holdem-mobile-game-5r4qq7 branch → Apply.
+services:
+  - type: web
+    name: poker
+    runtime: node
+    plan: free
+    branch: claude/texas-holdem-mobile-game-5r4qq7
+    buildCommand: echo "no build needed - zero dependencies"
+    startCommand: node --no-warnings server.js
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 22.16.0
+      - key: JWT_SECRET
+        generateValue: true

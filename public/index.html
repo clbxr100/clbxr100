@@ -1,124 +1,316 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🃏 Texas Hold'em Poker</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1120">
+  <title>Hold'em Blitz 🃏</title>
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/screens.css">
+  <link rel="stylesheet" href="/css/table.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🃏</text></svg>">
 </head>
 <body>
-    <!-- Login Screen -->
-    <div id="loginScreen" class="screen">
-        <div class="login-container">
-            <h1>🃏 Texas Hold'em Poker</h1>
-            <p class="subtitle">Play with friends on localhost!</p>
+<div id="app">
 
-            <div class="avatar-selection">
-                <h3>Choose Your Avatar</h3>
-                <div class="avatar-grid">
-                    <div class="avatar-option" data-avatar="🤠">🤠</div>
-                    <div class="avatar-option" data-avatar="😎">😎</div>
-                    <div class="avatar-option" data-avatar="🤖">🤖</div>
-                    <div class="avatar-option" data-avatar="👑">👑</div>
-                    <div class="avatar-option" data-avatar="🦊">🦊</div>
-                    <div class="avatar-option" data-avatar="🐼">🐼</div>
-                    <div class="avatar-option" data-avatar="🦁">🦁</div>
-                    <div class="avatar-option" data-avatar="🐯">🐯</div>
-                    <div class="avatar-option" data-avatar="🎃">🎃</div>
-                    <div class="avatar-option" data-avatar="👻">👻</div>
-                    <div class="avatar-option" data-avatar="🎭">🎭</div>
-                    <div class="avatar-option" data-avatar="🎪">🎪</div>
-                </div>
-            </div>
-
-            <input type="text" id="playerName" placeholder="Enter your name" maxlength="15">
-            <input type="text" id="roomId" placeholder="Room ID (e.g., room1)" value="room1">
-            <button id="joinBtn" class="btn-primary">Join Game</button>
+  <!-- ============ AUTH ============ -->
+  <section id="screen-auth" class="screen">
+    <div class="auth-wrap">
+      <div class="logo">
+        <div class="logo-cards"><span>🂡</span><span>🂮</span></div>
+        <h1>Hold'em <em>Blitz</em></h1>
+        <p class="tagline">Texas Hold'em with power-ups, pets &amp; mayhem</p>
+      </div>
+      <div class="auth-card">
+        <div class="tabs" id="auth-tabs">
+          <button class="tab active" data-tab="login">Sign In</button>
+          <button class="tab" data-tab="signup">Sign Up</button>
+          <button class="tab" data-tab="guest">Guest</button>
         </div>
+        <form id="auth-form" autocomplete="on">
+          <input id="auth-username" type="text" placeholder="Username" maxlength="16" autocomplete="username">
+          <input id="auth-password" type="password" placeholder="Password" maxlength="64" autocomplete="current-password">
+          <button type="submit" class="btn btn-primary btn-big" id="auth-submit">Sign In</button>
+          <p class="auth-note" id="auth-note"></p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DASHBOARD ============ -->
+  <section id="screen-dashboard" class="screen hidden">
+    <header class="topbar">
+      <div class="me">
+        <span class="me-avatar" id="dash-avatar">🤠</span>
+        <div>
+          <div class="me-name" id="dash-name">—</div>
+          <div class="me-coins">🪙 <span id="dash-coins">0</span></div>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" id="btn-sound">🔊</button>
+        <button class="btn btn-ghost" id="btn-logout">Exit</button>
+      </div>
+    </header>
+    <div class="dash-body">
+      <div class="xp-card">
+        <div class="xp-top"><span id="xp-rank">🐟 Fish</span><span id="xp-level">Lv 1</span></div>
+        <div class="quest-bar xp-bar"><div class="quest-fill" id="xp-fill"></div></div>
+        <div class="xp-sub" id="xp-sub"></div>
+      </div>
+      <div class="bonus-row">
+        <button class="btn btn-gold" id="btn-daily">🎁 Daily Bonus</button>
+        <button class="btn btn-primary" id="btn-spin">🎡 Daily Spin</button>
+        <button class="btn btn-ghost hidden" id="btn-bailout">🆘 Bailout</button>
+      </div>
+      <div class="stats-card hidden" id="admin-card">
+        <h3>👑 Admin — Gift Chips</h3>
+        <div class="add-friend-row">
+          <input type="text" id="gift-name" placeholder="Username" maxlength="16">
+          <input type="number" id="gift-amount" placeholder="Amount" min="1" max="1000000" style="max-width:110px">
+          <button class="btn btn-gold" id="gift-send">Send</button>
+        </div>
+      </div>
+      <nav class="dash-nav">
+        <button class="nav-card" id="nav-play"><span class="nav-emoji">🎰</span><span>Play</span><small>Join or host a table</small></button>
+        <button class="nav-card" id="nav-tournaments"><span class="nav-emoji">🏆</span><span>Tournaments</span><small>Sit &amp; Go showdowns</small></button>
+        <button class="nav-card" id="nav-shop"><span class="nav-emoji">🛍️</span><span>Shop</span><small>Avatars, pets &amp; power-ups</small></button>
+        <button class="nav-card" id="nav-leaderboard"><span class="nav-emoji">🥇</span><span>Leaderboard</span><small>Who runs this town?</small></button>
+        <button class="nav-card" id="nav-friends"><span class="nav-emoji">👥</span><span>Friends</span><small>See who's online, chat &amp; join<span class="chat-unread hidden" id="friends-unread">0</span></small></button>
+        <button class="nav-card nav-bp" id="nav-battlepass"><span class="nav-emoji">🎫</span><span>Battle Pass</span><small>Season rewards — play, earn, claim</small></button>
+      </nav>
+      <div class="stats-card" id="quests-card">
+        <h3>📋 Daily Quests</h3>
+        <div id="quests-list"></div>
+      </div>
+      <div class="stats-card">
+        <h3>Your Stats</h3>
+        <div class="stats-grid" id="stats-grid"></div>
+      </div>
+      <div class="stats-card">
+        <h3>🏅 Achievements <small id="ach-count"></small></h3>
+        <div class="ach-grid" id="ach-grid"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FRIENDS ============ -->
+  <section id="screen-friends" class="screen hidden">
+    <header class="topbar">
+      <button class="btn btn-ghost" data-nav="dashboard">‹ Back</button>
+      <h2>Friends</h2>
+      <span></span>
+    </header>
+    <div class="list-body" id="friends-body">
+      <div class="add-friend-row">
+        <input type="text" id="friend-name" placeholder="Add by username…" maxlength="16">
+        <button class="btn btn-primary" id="friend-add">Add</button>
+      </div>
+      <div id="friend-requests"></div>
+      <div id="friend-list"></div>
+    </div>
+    <!-- DM sheet -->
+    <div class="sheet hidden" id="dm-sheet">
+      <div class="sheet-inner chat-inner">
+        <h3 id="dm-title">💬</h3>
+        <div class="chat-messages" id="dm-messages"></div>
+        <div class="chat-input-row">
+          <input id="dm-input" type="text" placeholder="Message…" maxlength="300">
+          <button class="btn btn-primary" id="dm-send">➤</button>
+        </div>
+        <button class="btn btn-ghost" id="dm-close">Close</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ BATTLE PASS ============ -->
+  <section id="screen-battlepass" class="screen hidden">
+    <header class="topbar">
+      <button class="btn btn-ghost" data-nav="dashboard">‹ Back</button>
+      <h2>🎫 Battle Pass</h2>
+      <span></span>
+    </header>
+    <div class="list-body" id="bp-body"></div>
+  </section>
+
+  <!-- ============ LEADERBOARD ============ -->
+  <section id="screen-leaderboard" class="screen hidden">
+    <header class="topbar">
+      <button class="btn btn-ghost" data-nav="dashboard">‹ Back</button>
+      <h2>Leaderboard</h2>
+      <span></span>
+    </header>
+    <div class="tabs shop-tabs" id="lb-tabs">
+      <button class="tab active" data-by="coins">🪙 Richest</button>
+      <button class="tab" data-by="hands_won">🏆 Wins</button>
+      <button class="tab" data-by="biggest_pot">💰 Best Pot</button>
+      <button class="tab" data-by="weekly">📅 Weekly</button>
+    </div>
+    <div class="list-body" id="lb-list"></div>
+  </section>
+
+  <!-- ============ LOBBY ============ -->
+  <section id="screen-lobby" class="screen hidden">
+    <header class="topbar">
+      <button class="btn btn-ghost" data-nav="dashboard">‹ Back</button>
+      <h2>Tables</h2>
+      <button class="btn btn-primary" id="btn-create-table">+ Host</button>
+    </header>
+    <div class="list-body" id="table-list"></div>
+  </section>
+
+  <!-- ============ TOURNAMENTS ============ -->
+  <section id="screen-tournaments" class="screen hidden">
+    <header class="topbar">
+      <button class="btn btn-ghost" data-nav="dashboard">‹ Back</button>
+      <h2>Tournaments</h2>
+      <button class="btn btn-primary" id="btn-create-tourney">+ Host</button>
+    </header>
+    <div class="list-body" id="tourney-list"></div>
+  </section>
+
+  <!-- ============ SHOP ============ -->
+  <section id="screen-shop" class="screen hidden">
+    <header class="topbar">
+      <button class="btn btn-ghost" data-nav="dashboard">‹ Back</button>
+      <h2>Shop</h2>
+      <div class="me-coins">🪙 <span id="shop-coins">0</span></div>
+    </header>
+    <div class="tabs shop-tabs" id="shop-tabs">
+      <button class="tab active" data-cat="avatars">Avatars</button>
+      <button class="tab" data-cat="pets">Pets</button>
+      <button class="tab" data-cat="throwables">Throwables</button>
+      <button class="tab" data-cat="celebrations">Win FX</button>
+      <button class="tab" data-cat="tablefx">Table</button>
+      <button class="tab" data-cat="powerups">Power-ups</button>
+    </div>
+    <div class="list-body shop-grid" id="shop-grid"></div>
+  </section>
+
+  <!-- ============ TABLE ============ -->
+  <section id="screen-table" class="screen hidden">
+    <header class="table-top">
+      <button class="btn btn-ghost btn-sm" id="btn-leave-table">‹ Leave</button>
+      <div class="table-info">
+        <span id="table-name">Table</span>
+        <span class="blinds-badge" id="table-blinds"></span>
+      </div>
+      <div class="table-top-actions">
+        <button class="btn btn-ghost btn-sm" id="btn-invite">📣</button>
+        <button class="btn btn-ghost btn-sm" id="btn-history">🕐</button>
+        <button class="btn btn-ghost btn-sm" id="btn-sitout">⏸️</button>
+        <span class="phase-badge" id="table-phase">waiting</span>
+      </div>
+    </header>
+
+    <div class="felt-wrap">
+      <div class="felt" id="felt">
+        <div class="felt-center">
+          <div class="pot-display" id="pot-display"><span class="pot-label">POT</span><span id="pot-amount">0</span></div>
+          <div class="community" id="community"></div>
+          <div class="banner" id="table-banner"></div>
+        </div>
+        <!-- seats injected here -->
+      </div>
     </div>
 
-    <!-- Game Screen -->
-    <div id="gameScreen" class="screen hidden">
-        <div class="game-container">
-            <!-- Header -->
-            <div class="game-header">
-                <div class="room-info">
-                    <span id="roomName"></span>
-                    <span id="gamePhase" class="phase-badge">Waiting...</span>
-                </div>
-                <button id="startGameBtn" class="btn-primary hidden">Start Game</button>
-            </div>
+    <div class="hand-strength hidden" id="hand-strength"></div>
+    <div class="hero-cards" id="hero-cards"></div>
 
-            <!-- Main Game Area -->
-            <div class="game-area">
-                <!-- Players Area -->
-                <div class="players-container" id="playersContainer">
-                    <!-- Players will be dynamically added here -->
-                </div>
-
-                <!-- Poker Table -->
-                <div class="poker-table">
-                    <div class="table-center">
-                        <div class="community-cards" id="communityCards">
-                            <!-- Community cards will appear here -->
-                        </div>
-                        <div class="pot-display">
-                            <div class="pot-label">POT</div>
-                            <div class="pot-amount" id="potAmount">$0</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="action-panel" id="actionPanel">
-                    <div class="bet-controls">
-                        <input type="range" id="betSlider" min="0" max="1000" value="0" step="10">
-                        <input type="number" id="betInput" value="0" min="0" step="10">
-                    </div>
-                    <div class="action-buttons">
-                        <button class="action-btn btn-danger" data-action="fold">Fold</button>
-                        <button class="action-btn btn-warning" data-action="check">Check</button>
-                        <button class="action-btn btn-success" data-action="call">Call <span id="callAmount"></span></button>
-                        <button class="action-btn btn-primary" data-action="raise">Raise</button>
-                        <button class="action-btn btn-special" data-action="allin">All In</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Chat Sidebar -->
-            <div class="chat-sidebar">
-                <div class="chat-header">
-                    <h3>💬 Chat</h3>
-                </div>
-                <div class="chat-messages" id="chatMessages">
-                    <!-- Chat messages will appear here -->
-                </div>
-                <div class="emoji-panel">
-                    <button class="emoji-btn" data-emoji="😂">😂</button>
-                    <button class="emoji-btn" data-emoji="👍">👍</button>
-                    <button class="emoji-btn" data-emoji="🎉">🎉</button>
-                    <button class="emoji-btn" data-emoji="😱">😱</button>
-                    <button class="emoji-btn" data-emoji="🔥">🔥</button>
-                    <button class="emoji-btn" data-emoji="💰">💰</button>
-                </div>
-                <div class="chat-input">
-                    <input type="text" id="chatInput" placeholder="Type a message..." maxlength="100">
-                    <button id="sendChatBtn">Send</button>
-                </div>
-            </div>
-        </div>
+    <div class="action-bar" id="action-bar">
+      <button class="pu-tray-btn" id="btn-powerups"><span id="pu-tray-emoji">⚡</span></button>
+      <button class="btn btn-throw" id="btn-throw">🎁</button>
+      <div class="action-buttons" id="action-buttons">
+        <button class="btn btn-danger" data-act="fold">Fold</button>
+        <button class="btn btn-warn" data-act="check">Check</button>
+        <button class="btn btn-success" data-act="call">Call</button>
+        <button class="btn btn-primary" data-act="raise">Raise</button>
+      </div>
+      <div class="wait-note" id="wait-note">Waiting…</div>
     </div>
 
-    <!-- Winner Modal -->
-    <div id="winnerModal" class="modal hidden">
-        <div class="modal-content">
-            <h2>🎉 Winner! 🎉</h2>
-            <div id="winnerInfo"></div>
-            <p>Next round starting soon...</p>
+    <!-- raise sheet -->
+    <div class="sheet hidden" id="raise-sheet">
+      <div class="sheet-inner">
+        <div class="raise-presets">
+          <button class="btn btn-ghost" data-preset="min">Min</button>
+          <button class="btn btn-ghost" data-preset="half">½ Pot</button>
+          <button class="btn btn-ghost" data-preset="pot">Pot</button>
+          <button class="btn btn-danger" data-preset="allin">All-In</button>
         </div>
+        <div class="raise-slider-row">
+          <input type="range" id="raise-slider" min="0" max="100" step="1">
+          <div class="raise-amount" id="raise-amount">0</div>
+        </div>
+        <div class="sheet-actions">
+          <button class="btn btn-ghost" id="raise-cancel">Cancel</button>
+          <button class="btn btn-primary" id="raise-confirm">Raise</button>
+        </div>
+      </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="game.js"></script>
+    <!-- power-up sheet -->
+    <div class="sheet hidden" id="pu-sheet">
+      <div class="sheet-inner">
+        <h3>⚡ Power-ups <small>(one per hand, on your turn)</small></h3>
+        <div id="pu-list"></div>
+        <button class="btn btn-ghost sheet-close" data-close="pu-sheet">Close</button>
+      </div>
+    </div>
+
+    <!-- hand history sheet -->
+    <div class="sheet hidden" id="history-sheet">
+      <div class="sheet-inner">
+        <h3>🕐 Hand history <small>(last 20)</small></h3>
+        <div id="history-list"></div>
+        <button class="btn btn-ghost sheet-close" data-close="history-sheet">Close</button>
+      </div>
+    </div>
+
+    <!-- throw sheet -->
+    <div class="sheet hidden" id="throw-sheet">
+      <div class="sheet-inner">
+        <h3>🎁 Throw or gift</h3>
+        <div id="throw-list"></div>
+        <button class="btn btn-ghost sheet-close" data-close="throw-sheet">Close</button>
+      </div>
+    </div>
+
+    <!-- emote wheel -->
+    <button class="chat-bubble emote-btn" id="btn-emote">😀</button>
+    <div class="emote-wheel hidden" id="emote-wheel">
+      <button data-emote="😂">😂</button><button data-emote="😎">😎</button>
+      <button data-emote="😡">😡</button><button data-emote="😭">😭</button>
+      <button data-emote="🤯">🤯</button><button data-emote="🥶">🥶</button>
+      <button data-emote="🤑">🤑</button><button data-emote="🫣">🫣</button>
+    </div>
+
+    <!-- chat -->
+    <button class="chat-bubble" id="chat-bubble">💬<span class="chat-unread hidden" id="chat-unread">0</span></button>
+    <div class="sheet hidden" id="chat-sheet">
+      <div class="sheet-inner chat-inner">
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="emoji-row" id="emoji-row">
+          <button data-emoji="😂">😂</button><button data-emoji="👍">👍</button>
+          <button data-emoji="🎉">🎉</button><button data-emoji="😱">😱</button>
+          <button data-emoji="🔥">🔥</button><button data-emoji="💰">💰</button>
+        </div>
+        <div class="chat-input-row">
+          <input id="chat-input" type="text" placeholder="Say something…" maxlength="200">
+          <button class="btn btn-primary" id="chat-send">➤</button>
+        </div>
+        <button class="btn btn-ghost sheet-close" data-close="chat-sheet">Close</button>
+      </div>
+    </div>
+
+    <div class="target-hint hidden" id="target-hint">Tap a player…<button class="btn btn-sm btn-ghost" id="target-cancel">Cancel</button></div>
+  </section>
+
+</div>
+
+<canvas id="fx-canvas"></canvas>
+<div id="toasts"></div>
+<div id="modal-root"></div>
+<script type="module" src="/js/app.js"></script>
 </body>
 </html>
